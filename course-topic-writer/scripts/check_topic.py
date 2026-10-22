@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Lint a course chapter.
   python3 check_topic.py terms <prev_ch1.md> [<prev_ch2.md> ...] > known.txt   # terms + acronyms already introduced
-  python3 check_topic.py check <chapter.md> [--chapter N] [--known known.txt]
+  python3 check_topic.py check <chapter.md> [--chapter N] [--known known.txt] [--plain-captions]
 Term and acronym findings are candidates to review, not verdicts."""
 import re, sys
 
@@ -48,7 +48,7 @@ def cmd_terms(paths):
             if k == "text": acr.update(ACR.findall(re.sub(r"`[^`]*`", "", l)))
     print("\n".join(sorted(acr - STOP)))
 
-def cmd_check(path, chapter=None, known_path=None):
+def cmd_check(path, chapter=None, known_path=None, plain=False):
     text = open(path, encoding="utf-8").read()
     lines, known, kacr, issues = body_lines(text), set(), set(), []
     if known_path:
@@ -56,7 +56,7 @@ def cmd_check(path, chapter=None, known_path=None):
         for t in raw.splitlines(): known.update(keys(t.strip()))
         kacr = set(ACR.findall(raw))
     add = lambda n, msg: issues.append((n, msg))
-    lvl, figs, used, defs, blk = 0, [], [], [], False
+    lvl, figs, used, defs, blk, refs, summ, insum = 0, [], [], [], False, [], 0, False
     for n, line, kind in lines:
         if kind == "code":
             if line.strip().startswith("```"):
@@ -71,18 +71,24 @@ def cmd_check(path, chapter=None, known_path=None):
             l = len(line) - len(line.lstrip("#"))
             if lvl and l > lvl + 1: add(n, f"skipped heading level (h{lvl} -> h{l})")
             if re.match(r"#+\s*Библиограф", line): add(n, "no \"Библиография\" heading: footnotes follow the summary directly")
+            insum = line.lstrip("#").strip().lower() == "резюме"
             lvl = l; continue
         if re.search(r"\bлекци", line, re.I): add(n, "word \"лекция\": chapters refer to themselves as \"глава\"")
         for m in BOLD.finditer(line):
             if not re.match(r"\s*(\([^)]*\)\s*)?-\s", line[m.end():m.end() + 60]) and not line.lstrip().startswith(("|", ">")):
                 add(n, f"bold \"{m.group(1)}\" is not a definition (**Term (term)** - ...)")
         figs += [(n, a, b) for a, b in re.findall(r"^_(?:Рисунок )?(\d+)\.(\d+)\.\s", line.strip())]
-        if re.match(r"^_\d+\.\d+\.\s", line.strip()): add(n, "figure caption must be _Рисунок X.Y. ..._")
+        if not plain and re.match(r"^_\d+\.\d+\.\s", line.strip()): add(n, "figure caption must be _Рисунок X.Y. ..._")
+        if not line.strip().startswith(("_", "!")): refs += [(n, a, b) for a, b in re.findall(r"рисун\w*\s+(\d+)\.(\d+)", line, re.I)]
+        if insum and re.match(r"\s*(?:-|\d+\.)\s", line): summ += 1
         d = re.match(r"\s*\[\^([\w-]+)\]:", line)
         if d: defs.append(d.group(1))
         used += [(n, r) for r in re.findall(r"\[\^([\w-]+)\]", line[d.end() if d else 0:])]
     for n, a, b in figs:
         if chapter and int(a) != chapter: add(n, f"figure {a}.{b}: chapter number should be {chapter}")
+    for n, a, b in refs:
+        if (a, b) not in {(x, y) for _, x, y in figs}: add(n, f"reference to figure {a}.{b}, but no such caption")
+    if summ > 8: add(0, f"summary has {summ} points: at most 8")
     nums = [int(b) for _, _, b in figs]
     if nums != list(range(1, len(nums) + 1)): add(0, f"figures not numbered consecutively: {nums}")
     for n, r in used:
@@ -112,4 +118,4 @@ if __name__ == "__main__":
     if not a: sys.exit(__doc__)
     opt = lambda k: a[a.index(k) + 1] if k in a else None
     if a[0] == "terms": cmd_terms(a[1:])
-    else: cmd_check(a[1], int(opt("--chapter")) if opt("--chapter") else None, opt("--known"))
+    else: cmd_check(a[1], int(opt("--chapter")) if opt("--chapter") else None, opt("--known"), "--plain-captions" in a)
