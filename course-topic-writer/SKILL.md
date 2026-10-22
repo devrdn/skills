@@ -1,256 +1,258 @@
 ---
-name: "course-topic-writer"
+name: course-topic-writer
 description: "Write, extend, edit and review university course chapters (topics, lectures, chapter readme.md files) by the house rules and per-subject profiles kept in this skill - Cloud Computing (AWS), web development in PHP, programming foundations in C++, and any subject added later. Use whenever the user asks to write a new topic or section, rewrite, shorten, extend or proofread a chapter, or fix style or terminology in course text, even if they just say \"напиши тему про S3\", \"проверь главу 5\", \"допиши раздел\" or \"поправь стиль\". Also use when they ask to add or change a subject in this skill or to remember a lasting rule for chapters. Not for slide decks, Moodle question banks, lab assignments or CSS."
 ---
 
 # Course topic writer
 
-A topic (глава) is three things at once: a text students read on their own, the teacher's outline for a 75-minute lecture, and the source for a slide deck later. So it must stand alone, flow in order, and be technically exact. After reading a chapter on their own, without the lecture, a student must fully understand its material: what each concept is, how it works, why it is needed and where it is used. Nothing needed for that is left for "разберём на занятии".
+Глава курса - это сразу три вещи: текст, который студент читает сам, конспект лекции на 75 минут и основа для будущих слайдов. Прочитав главу без лекции, студент должен понять, что это за понятие, как оно работает, зачем оно нужно и где применяется.
 
-These instructions are in English. The course material itself is written in the subject's language (Russian unless the profile says otherwise). Quoted Russian strings below (headings, captions, words) are exact literals to use as written.
+Порядок приоритетов: просьба пользователя, затем профиль предмета, затем этот файл.
 
-The skill has general rules (this file), subject profiles and reference files. A profile refines or overrides the general rules for its course. The user's current request overrides both.
+## Файлы скилла
 
-## Files of this skill
+Читай только то, что нужно для задачи. Пути указаны от папки скилла.
 
-Read only what the task needs. Paths are relative to this skill's folder.
-
-| File | Read when |
+| Файл | Когда читать |
 | --- | --- |
-| `references/subjects/<subject>.md` | Always: the profile of the subject being written (see "Subjects") |
-| `references/agents/<role>.md` | Before starting that role's subagent; pass the file to the subagent as its brief |
-| `references/code-folder.md` | The topic contains program code |
-| `references/illustrations.md` | Illustrating a topic (full workflow step 12, or when asked) |
-| `references/comparisons-and-costs.md` | The topic compares options in detail or involves money |
-| `references/humanize-ru.md` | Writing or editing any chapter text, and on "хуманизируй", "звучит как ИИ", "поправь стиль" |
-| `scripts/check_topic.py` | Linting a finished file (see "Checker script") |
+| `references/subjects/<предмет>.md` | Всегда: профиль предмета (таблица в конце файла) |
+| `references/style-ru.md` | Всегда, когда пишешь или правишь текст главы |
+| `references/code-folder.md` | В главе есть программный код |
+| `references/comparisons-and-costs.md` | Раздел подробно сравнивает варианты или посвящён стоимости (см. "Как устроен раздел") |
+| `references/full-mode.md` | Полный режим: новая глава или большой раздел |
+| `references/illustrations.md` | Полный режим, шаг "Иллюстрации", или по просьбе |
+| `references/agents/<роль>.md` | Перед запуском субагента этой роли; передай ему этот файл как задание |
+| `scripts/check_topic.py` | Проверка готового файла (раздел "Скрипт проверки") |
 
-## Workflow
+## Режим работы
 
-Pick the workflow by mode. A new topic or a large new section (roughly a third of a topic or more) goes through the full workflow. Edits, style fixes, proofreading, small extensions and reviews use the short workflow.
+Сначала определи режим по просьбе. Режим задаёт, что ты меняешь и сколько шагов делаешь.
 
-### Common first steps
+| Просьба | Режим | Что меняешь |
+| --- | --- | --- |
+| Новая глава или большой раздел (треть главы и больше) | Полный | Пишешь новый текст по полному процессу |
+| "Напиши раздел", "допиши", "расширь" | Короткий | Добавляешь новый текст. Текст автора остаётся как есть |
+| "Поправь стиль", "хуманизируй", "коряво", "звучит как ИИ" | Правка языка | Только формулировки. Факты, термины, примеры и сноски те же |
+| "Сократи" | Сокращение | Убираешь повторы и общие слова, объяснения "почему" остаются |
+| "Проверь главу", "найди ошибки" | Проверка | Ничего не меняешь, отдаёшь список ошибок |
 
-1. *Identify the subject* and read its profile file. Anything a profile omits comes from the general rules. If the subject has no profile, work from the general rules and ask about audience and prerequisites only if you cannot write without them.
-2. *Identify the mode and scope:* new topic, single section, edit, extension or review. Do exactly that much: a section stays a section, an edit stays an edit. If asked to change only style, do not change content.
-3. *Start from the latest text.* If the topic already exists, work on its current version in the repository, not on a local copy from earlier in the conversation: the author often edits chapters between requests. When `gh` has no access, the public file is available at `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>`. Keep the author's edits; if you disagree with one, say so instead of silently reverting it.
-4. *Collect what students already know.* This feeds the new-term rule. Sources: the profile's prerequisites, earlier chapters of the subject, and the part of the current topic already written. With a shell: `python3 scripts/check_topic.py terms <earlier chapters> > known.txt`. If earlier chapters are unavailable, ask for them or state explicitly what you assume is known.
+Текст автора меняется только в режимах правки, сокращения и в полном режиме при перестройке главы. Если при дописывании ты нашёл в тексте автора ошибку, повтор или противоречие, опиши это в заметке автору с предложенной правкой.
 
-### Full workflow
+## Общие первые шаги
 
-5. *Sources.* Run 1-3 _Researchers_ in parallel by subtopic, then the _Verifier_ on the merged `sources.md` (a working file, not delivered unless asked). A claim no source backs is marked "нужен источник" in the plan and does not go into the text as a statement. Never fill the gap from memory or invent a reference.
-6. *Plan and get approval.* Always show the plan before writing a new topic or a large section, and wait for the go-ahead. It contains:
-   - Sections and subsections in order, each with one line on its idea and the transition from the previous one.
-   - The term map: which new terms each section introduces, checked so that no term is needed before the section that defines it.
-   - Which facts from `sources.md` each section uses.
-   - Figures: number, caption, what the picture shows and where it comes from (own diagram, a screenshot from official documentation, or another source).
-   - Profile elements (service cards, hands-on placeholders and so on) and where they go.
-   - Open questions and every "нужен источник" mark.
+1. Определи предмет и прочитай его профиль. Если профиля нет, работай по общим правилам и спроси об аудитории, только если без этого писать нельзя.
+2. Возьми последнюю версию главы из репозитория, а не копию из начала разговора: автор правит главы между просьбами. Если `gh` недоступен, файл можно скачать по адресу `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>`.
+3. Собери, что студенты уже знают: пререквизиты из профиля, предыдущие главы и уже написанную часть текущей. Если есть shell: `python3 scripts/check_topic.py terms <предыдущие главы> > known.txt`. Если предыдущих глав нет, напиши в заметке, что считаешь известным.
 
-   When the user points to a model chapter, take the skeleton from it: order of sections and devices (metaphors, rules with good and bad examples, lists of operations, comparison tables). When restructuring an existing topic, build a fresh skeleton and move material into it rather than bolting new sections onto the old structure. Keep the plan compact. If the user is not available, state that the plan was not approved and continue.
-7. *Write* by the rules below, section by section in plan order: the frame (title, contents, questions, retrospective) first, then the sections, then the summary and footnotes. Every technical claim comes from `sources.md` with a footnote or is stable textbook knowledge. If writing shows the plan was wrong, change the plan, not the term order. Write without the markers listed in `references/humanize-ru.md` from the first draft.
-8. *Code folder.* If the topic has code, build it now by `references/code-folder.md`, so the checks can run it.
-9. *Checks, in parallel, each in a subagent with fresh context.* Start the _Reviewer_, the _Structure checker_ and the _Student reader_. Judge every finding: fix it or note why it is a false positive. When findings conflict, follow the priority written in the role files: the Reviewer decides facts, term order, code and course rules; the Student reader decides water and what the weakest student needs; the Editor decides grammar and fluency. Apply every cut so that the sentences around it stay complete and linked: rewrite, do not just delete. If no subagent tool exists, do each check yourself as a separate pass with its role file, and say so.
-10. *Humanize.* After the fixes, run the process from `references/humanize-ru.md` over the whole text in the main session: mark the markers, rewrite those paragraphs around their main point, then check that no fact, term or footnote was added or lost.
-11. *Editor read.* Start the _Editor_ (fresh context) on the whole text and apply its rewrites: after all the cuts and fixes, every sentence must be grammatical, complete and linked to the previous one, and the text must read smoothly aloud.
-12. *Illustrations.* After the text is settled, illustrate the topic by `references/illustrations.md`, using the Student reader's section C. Part of every topic, not only when asked.
-13. *Deliver* as in the short workflow, with the code folder and new images. Run the checker first (short workflow step 7): numbering, figure-reference and footnote findings must be fixed. Do not paste the checkers' reports; mention in one line only what you could not fix, verify or illustrate.
+## Короткий режим, правка и сокращение
 
-### Agents
+Эти режимы ты выполняешь сам, без субагентов.
 
-Each role is described in `references/agents/<file>`: model, inputs, task, output format, what it must not do, and its priority. Give the subagent the role file and the files it lists, never a summary of this conversation. With the Agent tool, set `model`; if a model is unavailable, the agent inherits the session model.
+1. Держи в голове карту терминов: какие новые термины появляются и где они определены.
+2. Напиши или поправь текст по разделам "Как устроен раздел", "Списки и таблицы", "Термины" и по `references/style-ru.md`. Новые факты сверь с официальным источником. Если меняется код, обнови папку с кодом.
+3. Прогони скрипт: `python3 scripts/check_topic.py check <файл> --chapter N --known known.txt`.
+4. Сделай вычитку по разделу "Вычитка".
+5. Отдай результат: сам текст, затем короткую заметку автору (раздел "Заметка автору"). Раздел или правку можно отдать в ответе, целую главу отдай файлом `readme.md` с папкой кода и изображениями.
 
-| Role | File | Model | Step |
-| --- | --- | --- | --- |
-| Исследователь | `researcher.md` | `sonnet` | 5, sources |
-| Сверщик | `verifier.md` | `haiku` | 5, after the Researchers |
-| Рецензент | `reviewer.md` | `opus` | 9 |
-| Корректор структуры | `structure-checker.md` | `haiku` | 9 |
-| Читатель | `student-reader.md` | `sonnet` with web search | 9 |
-| Редактор | `editor.md` | `sonnet` | 11, and after any shortening |
+## Полный режим
 
-The plan, the text, the code folder, the illustrations and the fixes stay in the main session: one chapter, one author. No subagent writes chapter text.
+Для новой главы или большого раздела прочитай `references/full-mode.md`: источники, план с согласованием, текст, проверки субагентами, Редактор, иллюстрации. Разделы ниже действуют и там.
 
-### Short workflow: edits, extensions, reviews
+Две просьбы вне полного режима выполняет субагент с файлом роли из `references/agents/`: "проверь главу" - Рецензент (`reviewer.md`); "нет ли воды", "понятно ли" - Читатель (`student-reader.md`).
 
-5. *Plan with a term map* in your head or in a short list. Show it only if the user asked or the change is debatable.
-6. *Write or edit* by the rules below. Check added facts against an official source. If code changes, update the code folder too.
-7. *Check.* Go through the checklist below and run `python3 scripts/check_topic.py check <file> --chapter N --known known.txt`. For an extension of several paragraphs or more, also run the Structure checker and the Student reader on the changed part. "Проверь главу" means the Reviewer; "нет ли воды", "понятно ли" means the Student reader; "хуманизируй", "звучит как ИИ" means the process in `references/humanize-ru.md`, keeping every fact; "коряво", "странно звучит", "нескладно" means the Editor. After any shortening, run the Editor on the changed part.
-8. *Deliver.* A full topic goes out as a `readme.md` file with its code folder and images; a section or an edit can go in the reply. No preamble about what you did. If the user's source has a substantive factual error, say so in a line or two.
+## Структура главы
 
-When the user asks to find or show errors, list them (grouped into facts, logic, formatting, language, each with a quote and a fix) and do not change the file until they say so.
-
-## Topic structure
-
-Unless the user or the profile says otherwise:
+Если пользователь или профиль не говорят иначе:
 
 ```markdown
 # Название темы
 
 <i>
-Opening story, only if the profile has one and the user supplied or requested it.
+Вступительная история, только если она есть в профиле и автор её дал или попросил.
 </i>
 
 ## Содержание
-(table of contents linking every ## and ### heading)
+(ссылки на все заголовки ## и ###)
 
 ## Вопросы для самопроверки
-(5-9 numbered questions on the key ideas; some answers come only from the topic itself)
+(5-9 нумерованных вопросов по главным идеям)
 
 ## Результаты обучения
 После изучения этой главы вы сможете:
-(4-11 items with checkable verbs: объяснить, сравнить, выбрать, спроектировать, настроить, рассчитать)
+(4-11 пунктов с проверяемыми глаголами: объяснить, сравнить, выбрать, настроить, рассчитать)
 
 ## Ретроспектива
-(from chapter 2 on: what earlier chapters gave and which question this one opens)
+(со второй главы: что дали прошлые главы и какой вопрос открывает эта)
 
-## Main sections
-...
+## Основные разделы
 
 ## Резюме
-(at most 8 one-line points, main ideas only, nothing new)
+(не больше 8 пунктов по одной строке, без нового материала)
 
-[^1]: Sources as footnotes right after the summary, with no heading.
+[^1]: Источники сносками сразу после резюме, без заголовка.
 ```
 
-Only the first chapter of a subject adds, after the learning outcomes, a short section "Как читать материалы курса" explaining bold, italic, monospace, the NOTE/IMPORTANT/WARNING/TIP blocks and `[^1]` references.
+Только первая глава предмета после результатов обучения содержит короткий раздел "Как читать материалы курса": жирный, курсив, моноширинный шрифт, блоки NOTE/IMPORTANT/WARNING/TIP и сноски `[^1]`.
 
-A full topic is about 5,000-7,000 words of prose when the subject allows. That is a guide, not a quota: never pad. When shortening, cut repetition, generalities and niche details, never the explanation of why something works the way it does.
+Полная глава обычно занимает 5 000-7 000 слов прозы. Объём, названный в просьбе, - это верхняя граница.
 
-## Structure and flow
+## Как устроен раздел
 
-A well-structured topic reads as one story: each section answers the question the previous one raised.
+Каждый раздел или подраздел про понятие строится из этих частей, по порядку:
 
-- *One section, one idea.* Split a section that carries two independent ideas.
-- *Headings name the concept or the question.* Avoid slogan and negation headings ("Папок нет, есть префиксы"): write "Ключи и префиксы".
-- *Problem-based learning.* The courses use problem-based learning wherever a concept solves a problem: open with a concrete problem the student can feel (a program that misbehaves, a game task that the known tools cannot solve or solve clumsily), let the student see why the old way falls short, and only then introduce the idea, how it works, an example, limits and trade-offs. Simple building blocks with no problem behind them can be explained directly.
-- *Why and where.* For every concept, construct or tool the text says explicitly why the student needs it and where it is used: in their own programs and labs, in games, in professional practice. A student must never wonder "зачем мне это".
-- *Simple to complex.* Intuition, then mechanism, then example, and only then edge cases.
-- *Transitions.* A section's first sentence links it to the previous one or names the problem it solves. A transition that tells the reader what we are about to do and with what ("Теперь попробуем применить отладчик к нашему примеру "Бой до победы".") is needed; only a transition with no content ("Рассмотрим подробнее.") is water. The intro must not contradict what follows.
-- *Say each thing once, in one form.* State a fact where it first matters; elsewhere refer back instead of explaining again. Give each point as text, a table or a figure, not all three. Reference lists (every command, every operator) only as far as an example needs them.
-- *Mechanism on data, not narrative.* Show how something works on 2-5 rows of data, one code fragment or one trace, and explain the result. Narrative scaffolding (characters in the main text, rhetorical questions, "мы уже знаем", "вернёмся к...") adds words, not understanding.
-- *Separate what is easy to confuse.* When students can carry a property or number of one concept over to a similar one (`=` and `==`, pointer and reference, data copies and read replicas), separate them in a short paragraph "Не путайте..." where the second one appears. A topic that covers several similar tools ends with one table comparing them.
-- *Consequences for the student's code.* For each mechanism add one sentence on what the student's program or system must handle: retry after a dropped connection, read the next page, switch to a new address. Test: "что сломается, если этого не знать?".
-- *Tools after the operations they perform.* What can be done (operations, concepts) comes before the means of doing it (console, CLI, SDK).
-- *Heading hierarchy with no skipped levels:* `#` title, `##` major sections, `###` subsections, `####` when a subsection exceeds ~300 words or holds several definitions ("Определение...", the mechanism, "Основные характеристики"). Prefer many `##` sections with a few `###` each over one `##` with fifteen subsections.
-- *Short paragraphs and visible structure.* Paragraphs of 2-5 sentences. Reasoning goes in prose, but enumerations do not hide inside a sentence: three or more parallel items (components, operations, steps, questions, rules, values) become a list, a sequence becomes a numbered list, a comparison becomes a table. The reverse also holds: steps the code already shows stay one sentence, not a list. Mark worked examples explicitly ("Рассмотрим пример."). No long paragraphs inside table cells; use numbered items separated by `<br>`.
-- *Exact cross-references* (unless the profile forbids links to other chapters). When the text refers to another place, it names that place exactly and links to it: inside the chapter `[раздел "Ошибка: счётчик не сбрасывается"](#ошибка-счётчик-не-сбрасывается)`, in another chapter `[глава 5, раздел "Цикл do while"](../05_Name/readme.md#цикл-do-while)`, a figure as "на рисунке 6.3", an example by its name ("пример \"Бой до победы\" из пятой главы"). Never vague pointers such as "из раздела о вложенных циклах", "выше", "как мы видели раньше", "в одном из примеров": they confuse students.
-- *Promises are kept.* "Разберём ниже" or "вернёмся в главе N" must come true. A pointer to a later chapter never substitutes for an explanation needed now.
-- *One running example* that grows through the topic beats five unrelated ones.
+1. *Проблема.* 1-3 предложения о задаче, которую студент не может решить известными средствами или решает неудобно. Если понятие простое и проблемы за ним нет, сразу скажи, что это и зачем.
+2. *Определение:* `**Термин (term)** - ...`.
+3. *Один пример,* разобранный на данных: 2-5 строк данных, один фрагмент кода или одна трассировка. Пример показывает главную идею раздела, а не крайний случай. Объясни результат.
+4. *Зачем и где* применяется, одним предложением, если это не ясно из проблемы.
+5. *Одна ловушка,* не больше, в одном абзаце из 2-4 предложений: типичная ошибка студента, абзац "Не путайте..." или то, что должен учесть код студента. Выбери ту, на которую студент наткнётся первым в этом курсе.
 
-## New-term rule
+Для каждого остального факта задай вопрос: нужен ли он, чтобы понять проблему, определение или пример этого раздела? Если нет, факт в раздел не входит. Обычно это крайние случаи, коды ошибок, лимиты на количество, редкие параметры и действия, детали выполнения по времени, альтернативы. Перечисли такие факты в заметке автору в пункте "Можно добавить", по одной строке на пункт. Решение примет автор.
 
-A new term never appears before the student has been told what it means. A student reading front to back must never meet a word they do not know and that has not yet been explained. For instance, "API" was removed from the first Cloud Computing chapter because students had not met it yet.
+Цены и расчёт стоимости входят в раздел, только если просьба говорит о стоимости или профиль требует в этом разделе часть о стоимости. Тогда следуй `references/comparisons-and-costs.md`. В остальных случаях расчёт идёт в "Можно добавить".
 
-*Known* means listed in the subject's prerequisites, defined in an earlier chapter of the same subject, or defined earlier in the current topic. Everything else is new: concepts, acronyms, service and technology names, language constructs, commands, keywords.
+Блоков NOTE, TIP, WARNING и IMPORTANT в одном разделе `##` не больше одного.
 
-- *Correct professional terms.* Use the established IT term, the one used in professional Russian, in official documentation and in earlier chapters, with the English term in parentheses at first use: "итерация (iteration)", "точка останова (breakpoint)", "неопределённое поведение (undefined behavior)". No homemade descriptions, slang or vague everyday words in place of a term ("прогон", "штука", "кусок кода"). Interface names (windows, commands, settings) are given exactly as the tool shows them.
-- *One term, used consistently.* Once a term is introduced, keep using it; do not switch to an informal synonym ("проход" after "итерация" was defined) or rename the same thing in the next paragraph. An everyday word may help explain a term once ("итерация, то есть один проход по телу цикла"), but the text then continues with the term.
-- *Terms students know.* Every term is either known (prerequisites, earlier chapters, earlier in this topic) or defined at first use; when a known term returns after a long gap, a short reminder in the same sentence is welcome.
-- *Define at first appearance:* `**Подсеть (subnet)** - часть сети, в которой...`. Defining it in the next sentence of the same paragraph is fine.
-- *Sound definitions.* A definition does not use the defined word ("реплика - это реплика, которая...") and does not reduce the concept to one implementation ("шард - сервер", "хранилище - том EBS"); it stays true in the general case. A new term must not collide with a term the course already uses for something else.
-- *It applies everywhere:* prose, examples, code, tables, captions, NOTE/TIP/WARNING blocks, analogies, footnotes. Code uses only constructs students have seen.
-- *If a term is needed before the topic reaches it,* give a one-sentence explanation on the spot (not bold, saying where it is covered in depth) or rephrase without it. Rephrasing is usually better.
-- *Expand acronyms at first use* unless they are prerequisites.
-- *One or two new terms per paragraph,* then an example, then the next.
-- *No concepts from the future in overviews* and early summary tables.
-- *Stay inside the prerequisites:* do not lean on details the audience may not know even if they belong to a prerequisite course; say it in plain words.
-- *Exceptions:* "Содержание", "Вопросы для самопроверки" and "Результаты обучения" deliberately name what the topic will teach. The opening story uses plain language.
+Порядок разделов:
 
-Example. Bad: "Экземпляр в приватной подсети выходит в интернет через NAT Gateway" where NAT has not been explained. Good: first why a private server cannot download updates, then the definition of NAT, then the sentence about NAT Gateway. When editing, recheck the term order: moving a section can break it.
+- Один раздел - одна идея. Заголовок называет понятие или вопрос ("Ключи и префиксы"), а не лозунг ("Папок нет, есть префиксы").
+- От простого к сложному: интуиция, механизм, пример, ограничения.
+- Первое предложение раздела связано с предыдущим разделом или называет проблему.
+- Каждая мысль звучит один раз и в одной форме: текстом, таблицей или рисунком. Дальше на неё ссылаются.
+- Операции и понятия идут раньше инструментов, которыми их выполняют (консоль, CLI, SDK).
+- Один сквозной пример, который растёт по ходу главы, лучше пяти разных.
+- Ссылка на другое место называет его точно и ведёт туда: `[раздел "Цикл do while"](#цикл-do-while)`, "на рисунке 6.3", `пример "Бой до победы" из пятой главы`. Ссылки "выше", "раньше", "в одном из примеров" студента путают.
+- Обещание "разберём ниже" выполняется в этой же главе.
+- Заголовки идут без пропуска уровней: `#`, `##`, `###`, `####`. Лучше много разделов `##` с несколькими `###`, чем один `##` с пятнадцатью подразделами.
 
-## Formatting
+## Списки и таблицы
 
-- *Dashes.* Never `—` or `–` in topic text; only a plain hyphen `-`, also in definitions: `**Термин** - определение`.
-- *Bold* only for a term at its definition, and only for key concepts students will be tested on; secondary terms are defined in italic.
-- *Italic* `_like this_` for emphasis, list theses, figure captions and the one-sentence conclusion of a paragraph; never asterisks.
-- *Quotes* straight `"так"`, unless the profile says otherwise.
-- *"Глава", not "лекция"* when the text refers to itself or other topics.
-- *Lists:* hyphen bullets, each item capitalised and ending with a period. Exception: when short items complete the lead-in sentence, they start lowercase, end with a comma and the last with a period ("описывает сразу четыре разных момента:" / "- в первый раз `enemyHealth` равно `100`," / "- во второй `70`," ...). Thesis plus explanation: `- _Масштабируемость_. Система может...`. The lead-in agrees with the items grammatically. Numbered lists only where order matters.
-- *Monospace* for commands, parameters, variables, file names, APIs, functions, types and keywords. Code blocks always name the language.
-- *Bilingual terms:* at first appearance, the Russian term with the English one in parentheses. Do not translate service, technology or command names.
-- *Blocks* in GitHub syntax: `> [!NOTE]` extra explanation, `> [!IMPORTANT]` must-understand point or a risk of data loss, a crash or undefined behaviour, `> [!WARNING]` typical mistake or dangerous setting, `> [!TIP]` practical advice. Sparingly.
-- *Figures:* caption on the line under the image, `_Рисунок X.Y. Название_` (X chapter, Y figure number from 1); referred to as "на рисунке 5.2", never "на картинке выше". A borrowed image names its source and licence in the caption.
-- *Footnotes* numeric `[^1]`, numbered in order of first use, defined right after the summary, no "Библиография" heading. Harvard style: `[^1]: Author (year). _Title_. Publisher or site. Available at: URL`. Every source cited in the text and real.
-- *Tables* in standard Markdown, with an empty line before and after.
-- *Russian spelling:* "ё", no "т.д.", no slang ("снапшот", "бэкап"), no dramatic overstatements.
+Перечисление из трёх и более однородных пунктов (причины, шаги, действия, свойства, правила, значения) оформляется списком, даже если ты уже написал его фразой. Последовательность действий - нумерованный список. Сравнение нескольких вариантов по нескольким признакам - таблица.
 
-## Language and style
+Было:
 
-Academic yet natural: an experienced teacher and engineer explaining to a student, not API documentation and not a generated textbook. The list of markers of generated text and what not to flag is in `references/humanize-ru.md`.
+```markdown
+Ошибка обычно бывает одной из трёх: счётчик не увеличивается, условие написано с ошибкой на единицу или переменная-накопитель объявлена внутри цикла.
+```
 
-- Idea first, then the term and details. Tie new material to what students know.
-- Short clear sentences, but complete ones: every sentence has its subject and verb, is grammatical, and follows from the previous one. Read the text aloud: it must sound like a careful teacher speaking, not like notes. Shortening never leaves telegraphic fragments ("Исправление: возвращать счётчик", "Главное отличие: собирается") or sentences that lost their link to the previous one.
-- No marketing tone, pathos, empty phrases ("играет ключевую роль", "давайте погрузимся") or motivational filler.
-- Do not repeat one thought in different words without a teaching reason.
-- An occasional fitting joke is fine if it helps memory.
-- Opening-story characters never appear in the main text; in technical parts do not invent named people.
-- Click-by-click console steps go into hands-on materials when the profile says so.
+Стало:
 
-## Examples, accuracy and sources
+```markdown
+Ошибка обычно бывает одной из трёх:
 
-- *Everyday analogy* only if it builds the right mental model, and always return to the technical model.
-- *Teaching scenario* (online shop, booking service, game mechanic): present it as a teaching scenario, not a real case. A *real company* only with a reliable source.
-- *Code* is minimal, correct, readable for this level, and explained when its purpose is not obvious.
-- *Claims carry their conditions.* Say for which version, mode, configuration or case a behaviour holds ("до 15 реплик для PostgreSQL и MySQL", "неинициализированная локальная переменная - неопределённое поведение"). "Всегда", "никогда", "не даст", "без ограничений" only where the standard or documentation guarantees it. Marketing and SLA figures that teach nothing stay out.
-- Technical correctness beats elegant wording. Never invent services, features, APIs, flags, quotas, prices, cases, studies or links. Avoid exact numbers for fast-changing details unless they matter, and then take them from a current official source with the date. Verify anything that describes the world as it is now (features, limits, defaults, UI names) on a current official page when web access exists.
-- Source priority: standards and RFCs, NIST, official vendor documentation, project documentation (cppreference, php.net, Kubernetes and so on), papers and recognised books, company engineering blogs about their own systems. Medium, Stack Overflow, Reddit and SEO articles are not a basis for a definition. A full topic usually needs 5-12 sources. Reused text from an old course is checked like any other claim.
-- Never imply there is one right answer: show problem, requirement, decision, trade-off, and say when an option fits, when it does not, and what the alternative is.
+- счётчик не увеличивается,
+- условие написано с ошибкой на единицу,
+- переменная-накопитель объявлена внутри цикла.
+```
 
-## Checklist before delivery
+Пункты списка оформляются одним из двух способов:
 
-- [ ] Scope and mode match the request; on "style only", content is unchanged.
-- [ ] Topic structure in place, no skipped heading levels, transitions carry content.
-- [ ] Every new term defined at first appearance, including in code, tables, captions and blocks; correct professional terms used consistently, no informal substitutes.
-- [ ] No intro contradicts what follows, no explanation repeated, no tool before its operations.
-- [ ] Enumerations are lists, tables have empty lines around them.
-- [ ] Bold only in definitions, italic `_..._`, quotes per profile, no `—` or `–`.
-- [ ] Figures numbered and referenced, text matches figures, borrowed images carry source and licence.
-- [ ] Footnotes in order, each defined, cited and real.
-- [ ] Summary of at most 8 one-line points with nothing new.
-- [ ] Code folder present when the topic has code; outputs and line numbers match the text.
-- [ ] Humanize pass done; no markers from `references/humanize-ru.md` left.
-- [ ] Editor read done: every sentence grammatical, complete and linked; the text reads smoothly aloud.
-- [ ] Illustrations added.
-- [ ] Claims carry their conditions; confusable concepts are separated; each mechanism says what the student's code must handle.
-- [ ] Every concept says why it is needed and where it is used; problems come before solutions where a concept solves a problem.
-- [ ] Every reference to another place names it exactly and links to it.
-- [ ] A student reading alone gets a full understanding of the material.
-- [ ] Subject profile specifics applied.
-- [ ] Full workflow only: plan approved, facts trace to `sources.md`, findings of all three checks resolved.
+- *Продолжение вводной фразы:* короткий пункт в несколько слов, без собственных придаточных и второго предложения. Пункт со строчной буквы, в конце запятая, у последнего точка (как в примере выше). Вводная фраза грамматически согласована с пунктами.
+- *Тезис и пояснение:* `- _Тезис_. Полное предложение с подлежащим и сказуемым.` Например: `- _Пустую папку создать нельзя_. Кнопка создания папки в консоли создаёт пустой объект.` Этот способ нужен, как только пункту требуется пояснение.
 
-## Lasting corrections
+Длинные пояснения в ячейках таблицы разбиваются на нумерованные пункты через `<br>`.
 
-When the user gives a correction meant to last ("всегда так делай", "запомни", "в этом курсе не используем ..."), apply it right away and offer to add it to this skill: to this file if it concerns every subject, to the subject's profile file if it concerns one, to a role file if it concerns one agent. Do not add one-off edits of a particular text.
+## Термины
 
-This skill is distributed inside the plugin `course-topic-writer`. The skill-saving card cannot update it: repackage the whole plugin folder (this skill with `references/` and `scripts/`, plus `.claude-plugin/plugin.json` with the version raised) as a `.plugin` file, and also deliver the skill folder as a zip for manual upload.
+Студент, читающий главу от начала до конца, не встречает слова, которое ему ещё не объяснили.
 
-## Subjects
+*Известно* то, что есть в пререквизитах профиля, определено в предыдущих главах этого предмета или выше в этой главе. Всё остальное новое: понятия, аббревиатуры, названия сервисов и технологий, конструкции языка, команды.
 
-Each subject has a profile file in `references/subjects/`. Pick it by the course named in the request:
+- Новый термин определяется при первом появлении: `**Подсеть (subnet)** - часть сети, в которой...`. Определение в следующем предложении того же абзаца тоже подходит.
+- Используй устоявшийся профессиональный термин, как в официальной документации и прошлых главах, с английским в скобках при первом упоминании: "точка останова (breakpoint)". Названия окон, команд и настроек пиши точно так, как их показывает инструмент.
+- Один термин для одной вещи на всю главу. Бытовое слово может один раз пояснить термин, дальше текст продолжает с термином: после определения итерации текст пишет "итерация", а не "проход" или "виток".
+- Определение не использует определяемое слово и верно в общем случае, а не для одной реализации ("шард - сервер" неверно).
+- Правило действует везде: в прозе, коде, таблицах, подписях, блоках, аналогиях и сносках. Код использует только конструкции, которые студенты уже видели.
+- Если термин нужен раньше, чем глава до него дойдёт, переформулируй без него или поясни одним предложением на месте.
+- Аббревиатуры расшифровываются при первом упоминании, если их нет в пререквизитах.
+- Один-два новых термина на абзац, затем пример.
+- Утверждение называет условия, при которых оно верно: версию, режим, настройку ("неинициализированная локальная переменная - неопределённое поведение"). "Всегда" и "никогда" пишутся, только если это гарантирует стандарт или документация.
+- Исключения: "Содержание", "Вопросы для самопроверки" и "Результаты обучения" намеренно называют то, чему глава научит.
 
-| Subject | Keywords | File |
+Пример. Плохо: "Экземпляр в приватной подсети выходит в интернет через NAT Gateway", когда NAT ещё не объяснён. Хорошо: сначала почему сервер в приватной подсети не может скачать обновления, затем определение NAT, затем фраза про NAT Gateway.
+
+## Факты и источники
+
+- Каждое техническое утверждение берётся из источника со сноской или является устойчивым учебным знанием. Никогда не выдумывай сервисы, функции, флаги, лимиты, цены, случаи и ссылки.
+- То, что описывает мир сейчас (возможности, лимиты, значения по умолчанию, названия в интерфейсе), проверяй на текущей официальной странице, если есть доступ к вебу.
+- Приоритет источников: стандарты и RFC, NIST, официальная документация вендора и проекта (cppreference, php.net и так далее), статьи и признанные книги, инженерные блоги компаний о своих системах. Medium, Stack Overflow, Reddit и SEO-статьи не годятся как основа определения.
+- Учебный сценарий (магазин, сервис бронирования, игровая механика) подавай как учебный, а не как реальный случай. Реальную компанию упоминай только с надёжным источником.
+- Не делай вид, что правильный ответ один: покажи задачу, требование, решение, компромисс и когда подходит альтернатива.
+
+## Оформление
+
+Скрипт `check_topic.py` проверяет большую часть этих правил автоматически.
+
+- Только дефис `-`, никогда `—` или `–`, в том числе в определениях: `**Термин** - определение`.
+- Жирный только для термина в момент определения, и только для ключевых понятий, по которым будет проверка. Второстепенные термины определяются курсивом.
+- Курсив `_так_` для акцента, тезисов в списках, подписей рисунков и вывода абзаца в одно предложение. Не звёздочки.
+- Прямые кавычки `"так"`, если профиль не говорит иначе.
+- Глава называет себя и другие темы "глава", а не "лекция".
+- Моноширинный шрифт для команд, параметров, переменных, файлов, API, функций, типов и ключевых слов. У блока кода всегда указан язык.
+- Названия сервисов, технологий и команд не переводятся.
+- Блоки GitHub: `> [!NOTE]` дополнение, `> [!IMPORTANT]` то, что нужно понять обязательно, или риск потери данных, `> [!WARNING]` типичная ошибка или опасная настройка, `> [!TIP]` практический совет.
+- Подпись рисунка на строке под изображением: `_Рисунок X.Y. Название_`; в тексте "на рисунке 5.2". Заимствованное изображение указывает источник и лицензию.
+- Сноски `[^1]` нумеруются по порядку первого упоминания и стоят после резюме. Гарвардский стиль: `[^1]: Author (year). _Title_. Publisher or site. Available at: URL`.
+- Пустая строка до и после таблицы.
+- Буква "ё", без "т.д." и сленга ("снапшот", "бэкап").
+
+## Вычитка
+
+Последний шаг в любом режиме, кроме проверки. Прочитай весь текст, который отдаёшь, как вслух, и исправь:
+
+- согласование рода, числа и падежа, формы глаголов, пропущенные запятые;
+- неполные предложения: каждое предложение в прозе и в пояснении пункта списка имеет подлежащее и сказуемое ("Фильтр: какие объекты" становится "Фильтр определяет, к каким объектам применяется правило");
+- предложения, которые не следуют из предыдущего;
+- местоимения "это", "он", "такой", которые не указывают однозначно на только что сказанное;
+- признаки сгенерированного текста из `references/style-ru.md`;
+- абзацы, где три и более однородных пункта остались фразой, а не списком.
+
+Если доступен скилл `ru-text`, используй его для этого шага. В полном режиме вычитку делает субагент "Редактор".
+
+## Заметка автору
+
+После текста, отдельно, не больше пяти пунктов:
+
+- допущения, которые ты сделал (что считается известным, какую версию главы взял);
+- найденные ошибки в тексте автора с предложенной правкой;
+- "Можно добавить": что ты сознательно не включил в раздел, по одной строке;
+- что не удалось проверить.
+
+Без вступления о том, что ты сделал.
+
+## Проверка перед сдачей
+
+- [ ] Режим соответствует просьбе; текст автора не переписан без просьбы.
+- [ ] Каждый раздел о понятии: проблема, определение, один пример, не больше одной ловушки, не больше одного блока на `##`.
+- [ ] Каждый новый термин определён при первом появлении, термины не меняются на бытовые синонимы.
+- [ ] Перечисления из трёх и более пунктов оформлены списками.
+- [ ] Ссылки на другие места точные, обещания выполнены.
+- [ ] Факты со сносками, сноски по порядку и реальные.
+- [ ] Рисунки пронумерованы, на них есть ссылки в тексте.
+- [ ] Папка с кодом есть, если в главе есть код; выводы и номера строк совпадают с текстом.
+- [ ] Скрипт прогнан, вычитка сделана.
+- [ ] Особенности профиля предмета учтены.
+- [ ] Полный режим: план согласован, замечания трёх проверок разобраны, иллюстрации добавлены.
+
+Если пользователь просит найти или показать ошибки, перечисли их по группам (факты, логика, оформление, язык) с цитатой и правкой и не меняй файл, пока он не скажет.
+
+## Постоянные правки
+
+Когда пользователь даёт правку надолго ("всегда так делай", "запомни", "в этом курсе не используем..."), примени её сразу и предложи добавить в скилл: в этот файл, если она касается всех предметов; в профиль, если одного предмета; в файл роли, если одного субагента. Разовые правки конкретного текста в скилл не добавляются.
+
+Скилл распространяется в плагине `course-topic-writer`. Чтобы обновить его, упакуй всю папку плагина (скилл с `references/` и `scripts/` и `.claude-plugin/plugin.json` с увеличенной версией) в файл `.plugin`, а папку скилла дополнительно отдай zip-архивом.
+
+## Предметы
+
+Профиль выбирается по курсу, названному в просьбе:
+
+| Предмет | Ключевые слова | Файл |
 | --- | --- | --- |
 | Cloud Computing | облачные вычисления, Cloud Computing, облако, AWS | `cloud-computing.md` |
 | Web development (PHP) | веб-разработка, PHP, MiniShop | `web-php.md` |
 | Programming foundations (C++) | основы программирования, Programming Foundations, C++, программирование для геймдизайнеров | `programming-foundations-cpp.md` |
 
-To add a subject, the user either fills the template below by hand or describes the course in a message ("добавь предмет ..."). Map what they said onto the template without inventing or interrogating, save it as a new file in `references/subjects/`, add a row to the table above and repackage the plugin. Changing a subject changes only its file. If something important is missing while writing a topic, ask then and offer to add it to the profile.
+Чтобы добавить предмет, заполни шаблон `references/subjects/_template.md` по тому, что сказал пользователь, ничего не выдумывая, добавь строку в эту таблицу и переупакуй плагин. Если при написании главы не хватает важного, спроси и предложи добавить это в профиль.
 
-```markdown
-# Subject name
+## Скрипт проверки
 
-- _Keywords_: how the course is referred to in requests.
-- _Audience_: university, programme, year, level.
-- _Prerequisites_: what students already know and needs no explanation, including acronyms.
-- _Language and platform_: language of the text, main technology, what to compare with.
-- _Repository and files_: where chapters live, folder naming, images.
-- _Course plan_: topics in order and which are already written.
-- _Running project and story_: teaching project, opening-story characters.
-- _Special elements_: required tables, blocks, code walkthrough formats.
-- _Overrides_: quotes, structure, length, anything forbidden.
-```
-
-## Checker script
-
-`scripts/check_topic.py` lints a finished file: dashes, «» quotes, asterisk italics, bold outside definitions, the word "лекция", skipped heading levels, figure caption format and numbering, footnote order and orphans, terms used before their definition, unexplained acronyms. It also checks that every "рисунок X.Y" reference has a caption and that the summary has at most 8 points. It does not replace reading: term and acronym findings are candidates. With a profile caption format without "Рисунок", pass `--plain-captions`; numbering, figure-reference and footnote findings still block delivery. Prerequisite terms can be appended to `known.txt`, one per line.
+`scripts/check_topic.py` проверяет готовый файл: тире, кавычки «», курсив звёздочками, жирный вне определений, слово "лекция", пропуски уровней заголовков, формат и нумерацию подписей рисунков, ссылки "рисунок X.Y" без подписи, порядок сносок и сноски без определения, термины до определения, нерасшифрованные аббревиатуры, длину резюме. Замечания о терминах и аббревиатурах - кандидаты, их нужно проверить глазами. Если в профиле подпись без слова "Рисунок", добавь `--plain-captions`. Пререквизиты можно дописать в `known.txt` по одному на строку.

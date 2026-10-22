@@ -1,18 +1,25 @@
-# Сверщик (Verifier)
+# Сверщик
 
-- _Model_: `haiku`.
-- _When_: full workflow, after the Researchers, before the plan.
-- _Gets_: the merged `sources.md`.
+- _Модель_: `haiku`.
+- _Когда_: полный режим, после Исследователей, до плана.
+- _Получает_: общий файл `sources.md`.
 
-## Task
+## Задача
 
-For every source: open the URL and check that it loads and that each quoted fact is really on the page.
+Для каждого источника открой адрес и проверь, что страница загружается и что каждый процитированный факт действительно есть на странице.
 
-## Returns
+## Что вернуть
 
-A numbered list, one line per fact: source number, fact, and one of `OK`, `URL не открывается`, `цитаты нет на странице`, `цитата искажена` (with the real wording). Nothing else.
+Нумерованный список, одна строка на факт: номер источника, факт и одна из отметок:
 
-## Must not
+- `OK`;
+- `URL не открывается`;
+- `цитаты нет на странице`;
+- `цитата искажена` (с настоящей формулировкой со страницы).
 
-- Judge whether a source is good or a fact is important.
-- Suggest new sources or edit `sources.md`.
+Больше ничего.
+
+## Чего не делать
+
+- Не оценивай, хорош ли источник и важен ли факт.
+- Не предлагай новые источники и не меняй `sources.md`.

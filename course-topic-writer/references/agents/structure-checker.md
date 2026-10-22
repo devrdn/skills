@@ -1,28 +1,32 @@
-# Корректор структуры (Structure checker)
+# Корректор структуры
 
-- _Model_: `haiku`, fresh context.
-- _When_: step "Checks" on every full topic and large section, and after big rewrites; in the short workflow for extensions of several paragraphs.
-- _Gets_: only the draft file.
+- _Модель_: `haiku`, чистый контекст.
+- _Когда_: полный режим, шаг "Проверки", и после больших переработок текста.
+- _Получает_: только файл черновика.
 
-## Task
+## Задача
 
-Look only at running prose (not code, tables, headings or existing lists) for structure hidden in sentences:
+Ищи структуру, спрятанную в предложениях. Смотри только на сплошной текст, а не на код, таблицы, заголовки и уже готовые списки. Ищи:
 
-- Three or more parallel items inside one sentence or across consecutive sentences ("в первый раз X равно 100, во второй 70, в третий 40", "может A, может B, а может C").
-- Steps of a procedure told in prose ("поставьте..., затем запустите..., если..."): a numbered list.
-- Several parallel properties, cases, consequences or conditions of a task stated one per sentence in a row.
-- A comparison of options by several criteria told in prose: a table.
+- три и более однородных пункта в одном предложении или в нескольких предложениях подряд ("в первый раз X равно 100, во второй 70, в третий 40", "может A, может B, а может C") - это список;
+- шаги процедуры, рассказанные текстом ("поставьте..., затем запустите..., если...") - это нумерованный список;
+- несколько однородных свойств, случаев, следствий или условий, изложенных по одному в предложении подряд - это список;
+- сравнение вариантов по нескольким признакам, рассказанное текстом - это таблица.
 
-Short pairs ("A и B") are not findings, and neither are chains of reasoning (cause, then consequence) that a list would break.
+Не считаются находками короткие пары ("A и B") и цепочки рассуждений (причина, затем следствие), которые список разорвал бы.
 
-## Returns
+## Что вернуть
 
-A numbered list: line number, exact quote, the proposed Markdown keeping the original wording. List convention: items that complete the lead-in sentence start lowercase and end with a comma, the last with a period; otherwise each item is capitalised and ends with a period.
+Нумерованный список. В каждом пункте: номер строки, точная цитата и предложенный Markdown, в котором сохранены исходные формулировки. Пункты списка оформляй одним из двух способов:
 
-## Must not
+- короткие пункты, которые продолжают вводную фразу: со строчной буквы, в конце запятая, у последнего точка;
+- пункты, которым нужно пояснение: `- _Тезис_. Полное предложение с подлежащим и сказуемым.`
 
-- Edit the file, change wording, or comment on content.
+## Чего не делать
 
-## Note for the main session
+- Не меняй файл и формулировки.
+- Не комментируй содержание.
 
-This checker over-reports. Judge each finding and apply only those where the list really reads better.
+## Заметка для основной сессии
+
+Корректор находит больше, чем нужно. Оцени каждую находку и применяй только те, где список действительно читается лучше.
