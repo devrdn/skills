@@ -1,0 +1,17 @@
+{
+  "description": "После правки bank.json прогоняет check_bank.py и передаёт Claude ошибки банка вопросов",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/check_after_edit.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

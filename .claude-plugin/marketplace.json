@@ -1,12 +1,19 @@
 {
   "name": "rdndev-skills",
-  "owner": { "name": "rdndev" },
+  "owner": {
+    "name": "rdndev"
+  },
   "description": "Скиллы и плагины для написания учебных курсов.",
   "plugins": [
     {
       "name": "course-topic-writer",
       "source": "./plugins/course-topic-writer",
       "description": "Пишет и проверяет главы университетских курсов по правилам и профилям предметов."
+    },
+    {
+      "name": "moodle-question-bank",
+      "source": "./plugins/moodle-question-bank",
+      "description": "Составляет и правит банки вопросов Moodle по материалу темы курса: XML для импорта, ключ в Markdown, открытые вопросы с рубрикой."
     }
   ]
 }
