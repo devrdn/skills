@@ -1,0 +1,17 @@
+{
+  "description": "После правки readme.md главы курса прогоняет check_topic.py и передаёт Claude замечания по оформлению",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/check_after_edit.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

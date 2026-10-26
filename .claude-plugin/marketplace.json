@@ -1,0 +1,12 @@
+{
+  "name": "rdndev-skills",
+  "owner": { "name": "rdndev" },
+  "description": "Скиллы и плагины для написания учебных курсов.",
+  "plugins": [
+    {
+      "name": "course-topic-writer",
+      "source": "./plugins/course-topic-writer",
+      "description": "Пишет и проверяет главы университетских курсов по правилам и профилям предметов."
+    }
+  ]
+}

@@ -66,7 +66,7 @@ def cmd_check(path, chapter=None, known_path=None, plain=False):
         if kind == "story": continue
         if re.search("[\u2014\u2013]", line): add(n, "em/en dash: use a plain hyphen -")
         if "«" in line or "»" in line: add(n, "«» quotes: check the subject profile")
-        if re.search(r"(?<![*\w])\*(?!\*)[^*\n]+\*(?!\*)", line): add(n, "*italic*: use _italic_")
+        if re.search(r"(?<![*\w])\*(?!\*)[^*\n]+\*(?!\*)", re.sub(r"`[^`]*`", "", line)): add(n, "*italic*: use _italic_")
         if kind == "heading":
             l = len(line) - len(line.lstrip("#"))
             if lvl and l > lvl + 1: add(n, f"skipped heading level (h{lvl} -> h{l})")

@@ -1,0 +1,12 @@
+{
+  "name": "course-topic-writer",
+  "version": "2.0.0",
+  "description": "Пишет, дописывает, правит и проверяет главы университетских курсов по правилам и профилям предметов: Cloud Computing (AWS), веб-разработка на PHP, основы программирования на C++.",
+  "author": { "name": "rdndev" },
+  "repository": "https://github.com/devrdn/skills",
+  "keywords": ["course", "chapter", "education", "russian"],
+  "agents": [
+    "./skills/course-topic-writer/references/agents/reviewer.md",
+    "./skills/course-topic-writer/references/agents/student-reader.md"
+  ]
+}

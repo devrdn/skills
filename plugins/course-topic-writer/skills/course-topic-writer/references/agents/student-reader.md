@@ -1,3 +1,10 @@
+---
+name: student-reader
+description: Читатель главы курса из скилла course-topic-writer. Читает главу глазами слабого студента и ищет воду, пробелы в понимании и места для рисунков, файл не меняет. Запускай только из скилла course-topic-writer или команды check-chapter.
+tools: Read, Grep, Glob, WebFetch, WebSearch
+model: sonnet
+---
+
 # Читатель
 
 - _Модель_: `sonnet`, чистый контекст, с веб-поиском.
