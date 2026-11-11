@@ -1,6 +1,6 @@
 {
   "name": "moodle-question-bank",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Составляет и правит банки вопросов Moodle (Moodle XML и ключ в Markdown) по материалу темы курса: выбор, пропуск, соответствие, вывод программы, CodeRunner, открытые вопросы с рубрикой.",
   "author": {
     "name": "rdndev"
@@ -16,6 +16,7 @@
   "agents": [
     "./skills/moodle-question-bank/references/agents/reviewer.md",
     "./skills/moodle-question-bank/references/agents/student.md",
-    "./skills/moodle-question-bank/references/agents/leak-detector.md"
+    "./skills/moodle-question-bank/references/agents/leak-detector.md",
+    "./skills/moodle-question-bank/references/agents/editor.md"
   ]
 }

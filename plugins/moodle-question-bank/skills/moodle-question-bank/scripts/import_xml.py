@@ -54,7 +54,10 @@ def parse_question(q):
     if pre:
         code = html.unescape(pre.group(1))
         qtext = qtext[:pre.start()] + qtext[pre.end():]
-    stem = html_to_text(qtext).replace(bl.ERROR_NOTE, "").strip()
+    stem = html_to_text(qtext)
+    for note in (bl.ERROR_NOTE, bl.OLD_ERROR_NOTE):
+        stem = stem.replace(note, "")
+    stem = stem.strip()
     item = {"cat": cat, "set": "extra" if star else "main", "section": "", "stem": stem,
             "explanation": html_to_text(text_of(q, "generalfeedback/text"))}
     t = q.get("type")

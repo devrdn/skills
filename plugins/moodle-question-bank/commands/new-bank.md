@@ -11,4 +11,4 @@ $ARGUMENTS
 
 Если просят вопросы с открытым ответом, по Блуму или с рубрикой, работай по `references/essay.md`: сначала рубрика в Markdown на утверждение, XML только после одобрения.
 
-Иначе работай по разделу "Новый банк" в SKILL.md. Для проверки запускай агентов плагина `moodle-question-bank:reviewer`, `moodle-question-bank:student` и `moodle-question-bank:leak-detector` параллельно. Каждому передавай полные пути только к файлам из "Получает" его файла роли.
+Иначе работай по разделу "Новый банк" в SKILL.md. Для проверки запускай агентов плагина `moodle-question-bank:reviewer`, `moodle-question-bank:student` и `moodle-question-bank:leak-detector` параллельно, а после исправлений - `moodle-question-bank:editor` для вычитки языка. Каждому передавай полные пути только к файлам из "Получает" его файла роли.

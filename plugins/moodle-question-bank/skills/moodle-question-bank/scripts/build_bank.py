@@ -4,6 +4,7 @@
 Usage:
   python3 build_bank.py bank.json --out DIR
   python3 build_bank.py bank.json --student student.md --key key.json
+  python3 build_bank.py bank.json --review review.md
 """
 
 import argparse
@@ -48,7 +49,30 @@ def inline_html(s):
 
 
 def paragraphs_html(s):
-    return "".join("<p>%s</p>" % inline_html(p.strip()) for p in s.split("\n\n") if p.strip())
+    """Paragraphs are separated by an empty line; lines that start with "- " become one <ul>."""
+    items = []
+    for block in s.split("\n\n"):
+        para = []
+        for line in block.split("\n"):
+            line = line.strip()
+            if line.startswith("- "):
+                if para:
+                    items.append(("p", " ".join(para)))
+                    para = []
+                items.append(("li", line[2:].strip()))
+            elif line:
+                para.append(line)
+        if para:
+            items.append(("p", " ".join(para)))
+    html, in_list = "", False
+    for kind, text in items:
+        if kind == "li" and not in_list:
+            html += "<ul>"
+        elif kind == "p" and in_list:
+            html += "</ul>"
+        in_list = kind == "li"
+        html += ("<li>%s</li>" if kind == "li" else "<p>%s</p>") % inline_html(text)
+    return html + ("</ul>" if in_list else "")
 
 
 def question_html(q):
@@ -298,6 +322,58 @@ def student_version(bank):
     return "\n".join(lines).rstrip() + "\n", key
 
 
+# ------------------------------------------------------------- blind version ---
+
+def blind_version(bank):
+    """Only the options, in the same order and with the same letters as student.md.
+
+    The leak detector must not see the question or the code: a model that knows the
+    subject answers from knowledge and reports it as a form cue.
+    """
+    lines = ["# Варианты без вопросов", ""]
+    for qid, q in bl.all_ids(bank):
+        rnd = random.Random(qid)
+        t = q["type"]
+        if t in ("single", "output_choice"):
+            opts = [q["correct"]] + list(q["distractors"])
+        elif t == "multi":
+            opts = list(q["correct"]) + list(q["wrong"])
+        else:
+            continue
+        rnd.shuffle(opts)
+        lines += ["### %s%s" % (qid, " (несколько верных)" if t == "multi" else ""), ""]
+        lines += ["%s. %s" % (LETTERS[i], o) for i, o in enumerate(opts)] + [""]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+# ---------------------------------------------------------- reviewer version ---
+
+LEVEL_NAMES = {1: "1, знает", 2: "2, понимает", 3: "3, применяет"}
+
+
+def review_version(bank):
+    """Every question with its key, level and source quote: what the reviewer checks."""
+    lines = ["# Банк для рецензии", ""]
+    for (st, cat), items in bl.groups(bank).items():
+        lines += ["## %s, %s" % (bank["categories"].get(cat, cat), "основной набор" if st == "main" else "extra"), ""]
+        k = 0
+        for qid, q in items:
+            src = q.get("source") or []
+            src = [src] if isinstance(src, str) else list(src)
+            body = md_question(qid, q, k).split("\n", 2)[2]
+            if q["type"] in ("single", "output_choice"):
+                k += 1
+            lines += ["### %s" % qid, "",
+                      "*Тип*: %s. *Уровень*: %s. *Раздел*: %s." % (
+                          q["type"], LEVEL_NAMES.get(q.get("level"), "не указан"), q.get("section") or "не указан"),
+                      ""]
+            lines += ["*Цитата*: %s" % (" / ".join('"%s"' % x for x in src) if src else "нет"), ""]
+            lines += [body.rstrip("\n"), ""]
+            if q.get("explanation"):
+                lines += ["*Пояснение*: %s" % q["explanation"], ""]
+    return "\n".join(lines).rstrip() + "\n"
+
+
 # --------------------------------------------------------------------- main ---
 
 def build(bank, out_dir):
@@ -327,6 +403,8 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--student")
     ap.add_argument("--key")
+    ap.add_argument("--review")
+    ap.add_argument("--blind")
     args = ap.parse_args()
     bank = bl.load(args.bank)
     if args.out:
@@ -340,8 +418,16 @@ def main():
             with open(args.key, "w", encoding="utf-8") as f:
                 json.dump(key, f, ensure_ascii=False, indent=1)
         print("student version:", args.student, "| questions with key:", len(key))
-    if not (args.out or args.student):
-        ap.error("nothing to do: give --out and/or --student")
+    if args.review:
+        with open(args.review, "w", encoding="utf-8") as f:
+            f.write(review_version(bank))
+        print("review version:", args.review)
+    if args.blind:
+        with open(args.blind, "w", encoding="utf-8") as f:
+            f.write(blind_version(bank))
+        print("blind version:", args.blind)
+    if not (args.out or args.student or args.review or args.blind):
+        ap.error("nothing to do: give --out, --student, --review and/or --blind")
 
 
 if __name__ == "__main__":

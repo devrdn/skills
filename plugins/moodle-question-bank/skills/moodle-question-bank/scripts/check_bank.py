@@ -3,8 +3,10 @@
 compare agent answers with the key.
 
 Usage:
-  python3 check_bank.py bank.json                  # lint + counts + length stats
+  python3 check_bank.py bank.json                  # lint + counts + levels + length stats
   python3 check_bank.py bank.json --run-code       # also execute every code question
+  python3 check_bank.py bank.json --material chapter.md [previous.md ...]
+                                                   # also check source quotes and code names
   python3 check_bank.py bank.json --ids            # list current IDs with first words
   python3 check_bank.py bank.json --compare key.json answers.json [--leak]
   python3 check_bank.py bank.json --xml DIR        # also parse the built XML files
@@ -44,6 +46,10 @@ def warn(qid, msg):
     warnings.append("%s: %s" % (qid, msg))
 
 
+ABSOLUTE = re.compile(r"\b(только|всегда|никогда|нельзя|невозможно|обязательно|полностью|"
+                      r"любой|любая|любое|любые|любом|любого)\b", re.I)
+HEDGE = re.compile(r"\b(может|могут|обычно|иногда|возможно|как правило|в некоторых)\b", re.I)
+
 STOP = set("который которая которые которое этот этого такой такая такие нужно можно если когда чтобы "
            "между после перед через только также более менее всего всех один одна одно один".split())
 
@@ -51,6 +57,30 @@ STOP = set("который которая которые которое этот
 def content_words(s):
     words = re.findall(r"[A-Za-zА-Яа-яЁё0-9]{5,}", s.lower().replace("`", ""))
     return {w[:6] for w in words if w not in STOP}
+
+
+def plain_words(s):
+    return re.findall(r"[A-Za-zА-Яа-яЁё0-9_$]+", s.lower().replace("`", ""))
+
+
+def sources_of(q):
+    src = q.get("source")
+    if src is None or src == "":
+        return []
+    return [src] if isinstance(src, str) else list(src)
+
+
+def norm_text(s):
+    """Material and quotes compared without Markdown, typographic quotes and case."""
+    s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)          # [text](url) -> text
+    s = s.lower().replace("ё", "е")
+    s = re.sub(r"[*_`#>|\\«»\"'“”„]", "", s)
+    s = re.sub(r"[—–]", "-", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def has_code(q):
+    return bool(q.get("code")) or q["type"] in ("output", "output_choice", "code")
 
 
 def texts_of(q):
@@ -78,11 +108,26 @@ def lint(bank, names):
                     err(qid, "%s: %r" % (what, text[:60]))
         if not q.get("explanation"):
             warn(qid, "нет пояснения (explanation)")
+        if "level" in q and q["level"] not in (1, 2, 3):
+            err(qid, "level должен быть 1, 2 или 3, сейчас %r" % (q["level"],))
+        if "source" in q:
+            src = sources_of(q)
+            if not src or any(not isinstance(x, str) for x in src):
+                err(qid, "source должен быть строкой или списком строк")
+            elif sum(len(norm_text(x)) for x in src) < 20:
+                warn(qid, "цитата source короче 20 знаков: по ней нельзя проверить опору")
         if q.get("code") and t != "code":
             if not q.get("lang"):
                 warn(qid, "у кода в вопросе нет lang (json, bash, yaml или язык программирования)")
             if t not in ("output", "output_choice") and q["code"].count("\n") >= 20:
                 warn(qid, "код в вопросе длиннее 20 строк")
+        code = q.get("code") or ""
+        # Комментарий PHP до <?php - это подпись файла, которую PHP выведет как текст.
+        # HTML до <?php не трогаем: это часть страницы.
+        before = code.split("<?php", 1)[0] if "<?php" in code else ""
+        if re.search(r"^\s*(//|#|/\*)", before, re.M):
+            warn(qid, "комментарий перед <?php (%r) PHP выведет как текст, а перед namespace это ошибка: "
+                 "перенеси подпись файла внутрь, <?php // путь/файл.php" % before.strip()[:30])
         stems[(q["stem"].strip().lower(), q.get("code", ""))].append(qid)
         if t in ("single", "output_choice"):
             if len(q.get("distractors", [])) != 3:
@@ -93,6 +138,31 @@ def lint(bank, names):
             lens = [len(o) for o in opts]
             if min(lens) >= 8 and max(lens) > 2 * min(lens):
                 warn(qid, "разброс длин вариантов %s" % lens)
+            if t == "single":
+                hard = [d for d in q["distractors"] if ABSOLUTE.search(d)]
+                if not ABSOLUTE.search(q["correct"]) and len(hard) >= 2:
+                    warn(qid, "в %d неверных вариантах категоричные слова (%s), в верном их нет: "
+                              "верный угадывается как единственный спокойный"
+                         % (len(hard), ", ".join(sorted({ABSOLUTE.search(d).group(1).lower() for d in hard}))))
+                elif HEDGE.search(q["correct"]) and not any(HEDGE.search(d) for d in q["distractors"]):
+                    warn(qid, "только верный вариант осторожный (%r): перенеси оговорку в вопрос"
+                         % HEDGE.search(q["correct"]).group(1).lower())
+            words = [plain_words(o) for o in opts]
+            if all(len(w) >= 4 for w in words):
+                if len(set(tuple(w[:2]) for w in words)) == 1:
+                    warn(qid, "все варианты начинаются с %r: вынеси общее начало в вопрос"
+                         % " ".join(words[0][:2]))
+                elif len(set(tuple(w[-2:]) for w in words)) == 1:
+                    warn(qid, "все варианты кончаются на %r: вынеси общий хвост в вопрос"
+                         % " ".join(words[0][-2:]))
+        if t in ("single", "multi", "output_choice"):
+            opts = ([q["correct"]] if isinstance(q.get("correct"), str) else list(q.get("correct", []))) \
+                + list(q.get("distractors", [])) + list(q.get("wrong", []))
+            for o in opts:
+                m = re.search(r"\(([A-Za-z][A-Za-z ,-]{2,})\)", o.replace("`", ""))
+                if m and not re.search(r"\(([A-Za-z][A-Za-z ,-]{2,})\)", q["stem"]):
+                    warn(qid, "расшифровка (%s) стоит в варианте: перенеси её в вопрос" % m.group(1))
+                    break
         if t in ("single", "output_choice"):
             stem_words = content_words(q["stem"])
             key_hits = len(stem_words & content_words(q["correct"]))
@@ -107,7 +177,7 @@ def lint(bank, names):
             if m < 2:
                 err(qid, "множественный выбор: меньше двух неверных вариантов")
         if t == "gap":
-            if "____" not in q["stem"]:
+            if "____" not in q["stem"] and "____" not in q.get("code", "") and not q.get("code"):
                 err(qid, "в формулировке нет пропуска ________")
             if not q.get("answers"):
                 err(qid, "нет допустимых ответов")
@@ -166,6 +236,199 @@ def stats(bank):
         if share > 0.35 and len(sel) >= 6:
             warnings.append("%s/%s: верный вариант самый длинный в %d из %d: %s"
                             % (st, cat or "-", len(longest), len(sel), ", ".join(longest)))
+
+
+# ------------------------------------------------------------------ levels ---
+
+def written_lines(q):
+    """How many lines of the reference solution the student has to write."""
+    def lines(src):
+        out = []
+        for ln in (src or "").split("\n"):
+            ln = ln.strip()
+            if not ln or ln in ("<?php", "?>", "{", "}", "};") or ln.startswith(("//", "#", "/*", "*")):
+                continue
+            out.append(ln)
+        return out
+    sol = lines(q.get("solution"))
+    if q.get("format") in ("fix", "complete") and q.get("preload"):
+        given = Counter(lines(q["preload"]))
+        rest = []
+        for ln in sol:
+            if given[ln] > 0:
+                given[ln] -= 1
+            else:
+                rest.append(ln)
+        return len(rest)
+    sig = re.compile(r"^(?:(?:public|private|protected|static|final|async|export)\s+)*(?:function|def|class)\b")
+    return len([ln for ln in sol if not sig.match(ln)])
+
+
+def levels(bank):
+    grp = bl.groups(bank)
+    missing = [qid for qid, q in bl.all_ids(bank) if "level" not in q]
+    if missing:
+        warnings.append("у %d вопросов нет level (%s%s): распределение по уровням неполное"
+                        % (len(missing), ", ".join(missing[:5]), " ..." if len(missing) > 5 else ""))
+    for (st, cat), items in grp.items():
+        tasks = [(qid, written_lines(q)) for qid, q in items if q["type"] == "code"]
+        short = [qid for qid, n in tasks if n <= 2]
+        if len(tasks) >= 4 and len(short) > len(tasks) / 2:
+            warnings.append("%s/%s: %d из %d задач решаются в одну-две строки (%s)"
+                            % (st, cat or "-", len(short), len(tasks), ", ".join(short)))
+    if len(missing) == len(bl.all_ids(bank)):
+        return
+    print("Уровни (1 знает / 2 понимает / 3 применяет):")
+    for (st, cat), items in grp.items():
+        lv = [q["level"] for _, q in items if q.get("level") in (1, 2, 3)]
+        if not lv:
+            continue
+        c = Counter(lv)
+        n = len(lv)
+        code_cat = cat in ("c", "u") or all(has_code(q) for _, q in items)
+        print("  %-6s %-4s %d / %d / %d  (%.0f%% / %.0f%% / %.0f%%)%s"
+              % (st, cat or "-", c[1], c[2], c[3], 100 * c[1] / n, 100 * c[2] / n, 100 * c[3] / n,
+                 "  по коду" if code_cat else ""))
+        if n < 6:
+            continue
+        where = "%s/%s" % (st, cat or "-")
+        absent = [str(x) for x in (1, 2, 3) if not c[x] and not (x == 1 and code_cat)]
+        if absent:
+            warnings.append("%s: нет вопросов уровня %s" % (where, ", ".join(absent)))
+        max1, min3 = (0.30, 0.25) if code_cat else (0.45, 0.20)
+        if c[1] / n > max1:
+            warnings.append("%s: уровень 1 у %d из %d вопросов (%.0f%%): замени часть вопросами на понимание и применение"
+                            % (where, c[1], n, 100 * c[1] / n))
+        if c[3] and c[3] / n < min3:
+            warnings.append("%s: уровень 3 только у %d из %d вопросов (%.0f%%)" % (where, c[3], n, 100 * c[3] / n))
+    for (st, cat), items in grp.items():
+        tasks = [(qid, q, written_lines(q)) for qid, q in items if q["type"] == "code"]
+        for qid, q, n in tasks:
+            lvl = q.get("level")
+            if lvl == 2 and n <= 2:
+                warn(qid, "уровень 2, а написать нужно %d стр.: это уровень 1 или задаче нужна вторая конструкция" % n)
+            elif lvl == 3 and n <= 5:
+                warn(qid, "уровень 3, а написать нужно %d стр.: задача уровня 3 - от 9 строк" % n)
+            elif lvl == 1 and n >= 8:
+                warn(qid, "уровень 1, а написать нужно %d стр." % n)
+
+
+# ------------------------------------------------------------------- style ---
+
+def style(bank):
+    """Monotony that is visible only across the whole bank."""
+    fams = {"single": "выбор", "multi": "выбор", "output_choice": "выбор", "gap": "пропуск", "match": "соответствие"}
+    openers, by_fam = defaultdict(list), Counter()
+    same_start = []
+    below = []
+    for qid, q in bl.all_ids(bank):
+        fam = fams.get(q["type"])
+        if not fam:
+            continue
+        w = plain_words(q["stem"])
+        key = " ".join(w[:2] if fam == "выбор" else w[:1])
+        openers[(fam, key)].append(qid)
+        by_fam[fam] += 1
+        if q["type"] == "single":
+            first = [plain_words(o)[:1] for o in [q["correct"]] + q["distractors"]]
+            if all(first) and len(set(f[0] for f in first)) == 1 and len(first[0][0]) >= 4:
+                same_start.append(qid)
+        if q.get("code") and re.search(r"\bниже\b|\bследующ\w+\b|\bпоказанн\w+\b", q["stem"].lower()):
+            below.append(qid)
+    for (fam, key), ids in sorted(openers.items(), key=lambda kv: -len(kv[1])):
+        n = by_fam[fam]
+        limit = max(3, n // 5) if fam == "выбор" else max(4, n // 2)
+        if n >= 8 and len(ids) > limit and key:
+            warnings.append("зачин %r у %d из %d вопросов (%s): спроси по-разному"
+                            % (key, len(ids), n, fam))
+    gaps = [(qid, q) for qid, q in bl.all_ids(bank) if q["type"] == "gap" and "____" in q["stem"]]
+    named = [qid for qid, q in gaps if re.search(r"называ\w+\s+_{4,}", q["stem"].lower())]
+    if len(gaps) >= 4 and len(named) > len(gaps) / 2:
+        warnings.append("%d из %d пропусков кончаются на 'называется ________': поставь термин туда, "
+                        "где он работает в предложении" % (len(named), len(gaps)))
+    singles = sum(1 for _, q in bl.all_ids(bank) if q["type"] == "single")
+    if singles >= 8 and len(same_start) > singles / 4:
+        warnings.append("в %d из %d вопросов с выбором все варианты начинаются с одного слова (%s%s): "
+                        "общее начало - в вопрос" % (len(same_start), singles, ", ".join(same_start[:8]),
+                                                     " ..." if len(same_start) > 8 else ""))
+    with_code = sum(1 for _, q in bl.all_ids(bank) if q.get("code") and q["type"] != "code")
+    if with_code >= 4 and len(below) > with_code / 2:
+        warnings.append("в %d из %d вопросов с кодом стоит 'ниже', 'следующий' или 'показанный': "
+                        "вопрос должен сам подводить к коду" % (len(below), with_code))
+
+
+# ---------------------------------------------------------------- material ---
+
+KEYWORDS = set("""if elseif else for foreach while do switch case default return function echo print try catch
+finally throw def class new async await match fn use list array exit die include require include_once
+require_once and or not in is lambda with as from import sizeof typeof instanceof main int float double
+char void bool string var let const true false null none""".split())
+
+
+def code_names(q):
+    """Names the answer may depend on: calls, constants, superglobals, CLI flags, config keys, HTML attributes."""
+    blocks = [(q.get("lang", ""), q.get("code", ""))]
+    if q["type"] == "code":
+        lang = q.get("coderunnertype", "")
+        blocks += [(lang, q.get("solution", "")), (lang, q.get("preload", ""))]
+    inline = " ".join(re.findall(r"`([^`]+)`", " ".join(texts_of(q))))
+    blocks.append(("", inline))
+    everything = "\n".join(src for _, src in blocks)
+    defined = set(re.findall(r"\b(?:function|def|class|interface|const|let|var)\s+([A-Za-z_]\w*)", everything))
+    defined |= set(re.findall(r"\b[\w:<>\*&]+\s+([A-Za-z_]\w*)\s*\([^;{)]*\)\s*\{", everything))
+    if q["type"] == "code":
+        defined |= set(re.findall(r"([A-Za-z_]\w*)\s*\(", " ".join(re.findall(r"`([^`]+)`", q.get("stem", "")))))
+    names = set()
+    for lang, src in blocks:
+        if not src:
+            continue
+        names |= {n for n in re.findall(r"(?<![\w$])([A-Za-z_]\w*)\s*\(", src) if len(n) >= 3}
+        names |= set(re.findall(r"\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b", src))
+        names |= set(re.findall(r"__[A-Z]+__", src))
+        names |= set(re.findall(r"\$_[A-Z]+", src))
+        names |= set(re.findall(r"(?<![\w-])--[a-z][a-z0-9-]+", src))
+        if lang in ("json",):
+            names |= set(re.findall(r'"([A-Za-z][\w:.-]{2,})"\s*:', src))
+        if lang in ("yaml", "yml"):
+            names |= set(re.findall(r"^\s*-?\s*([A-Za-z][\w-]{2,}):", src, re.M))
+        if lang in ("html", "php"):
+            for _tag, attrs in re.findall(r"<([a-z][a-z0-9]*)\b([^<>?]*)>", src):
+                attrs = re.sub(r"\"[^\"]*\"|'[^']*'", "", attrs)
+                names |= {a for a in re.findall(r"\b([a-z][a-z-]{2,})\b", attrs)}
+    return {n for n in names if n not in defined and n.lower() not in KEYWORDS and n.strip("_")}
+
+
+def check_material(bank, paths):
+    raw = ""
+    for path in paths:
+        with open(path, encoding="utf-8") as f:
+            raw += f.read() + "\n"
+    flat = norm_text(raw)
+    no_source, absent = [], defaultdict(list)
+    for qid, q in bl.all_ids(bank):
+        src = sources_of(q)
+        if not src:
+            no_source.append(qid)
+        for quote in src:
+            if not isinstance(quote, str):
+                continue
+            for part in re.split(r"\.\.\.|…", quote):
+                part = norm_text(part).strip(" .,;:-")
+                if len(part) >= 12 and part not in flat:
+                    err(qid, "цитаты source нет в материале: %r" % part[:70])
+        for name in sorted(code_names(q)):
+            if name not in raw:
+                absent[name].append(qid)
+    print("Материал: %d файл(ов), %d знаков" % (len(paths), len(raw)))
+    if no_source:
+        warnings.append("у %d вопросов нет source (%s%s): опору на материал проверить нечем"
+                        % (len(no_source), ", ".join(no_source[:5]), " ..." if len(no_source) > 5 else ""))
+    if absent:
+        print("Имена из кода, которых нет в материале. Придумано для вопроса - оставь; "
+              "настоящая функция, параметр или поле, которых тема не объясняла, - перестрой вопрос:")
+        for name, ids in sorted(absent.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+            print("  %-28s %s" % (name, ", ".join(ids)))
+        warnings.append("в коде вопросов %d имён, которых нет в материале: см. список выше" % len(absent))
 
 
 # --------------------------------------------------------------------- code ---
@@ -296,6 +559,7 @@ def compare(bank, key_path, ans_path, leak):
     key = json.load(open(key_path, encoding="utf-8"))
     ans = json.load(open(ans_path, encoding="utf-8"))
     hits, total, rows = 0, 0, []
+    has_evidence = any(isinstance(a, dict) and "evidence" in a for a in ans.values())
     for qid, k in key.items():
         if leak and k["type"] not in ("single", "multi", "output_choice"):
             continue
@@ -320,8 +584,14 @@ def compare(bank, key_path, ans_path, leak):
             rows.append((qid, "угадан по форме", note))
         elif not leak and not ok:
             rows.append((qid, "не совпал с ключом (%s, %s)" % (given, conf), note))
+        elif not leak and has_evidence and not str(a.get("evidence", "")).strip():
+            rows.append((qid, "верно, но без опоры на материал (%s)" % conf, note))
         elif not leak and note:
             rows.append((qid, "замечание", note))
+    if not leak:
+        for qid, a in ans.items():
+            if qid not in key and isinstance(a, dict) and a.get("note"):
+                rows.append((qid, "замечание к задаче", a["note"]))
     if leak:
         print("Детектор подсказок угадал %d из %d (%.0f%%; случайный выбор около 25%%)"
               % (hits, total, 100.0 * hits / max(total, 1)))
@@ -359,6 +629,8 @@ def main():
     ap.add_argument("--compare", nargs=2, metavar=("KEY", "ANSWERS"))
     ap.add_argument("--leak", action="store_true")
     ap.add_argument("--xml", metavar="DIR")
+    ap.add_argument("--material", nargs="+", metavar="FILE",
+                    help="chapter file first, then previous chapters: check source quotes and code names")
     ap.add_argument("--names", default="Эмма,Джон", help="story characters that must not appear")
     args = ap.parse_args()
     bank = bl.load(args.bank)
@@ -371,6 +643,10 @@ def main():
         return
     lint(bank, [n for n in args.names.split(",") if n])
     stats(bank)
+    levels(bank)
+    style(bank)
+    if args.material:
+        check_material(bank, args.material)
     if args.run_code:
         run_code(bank)
     if args.xml:

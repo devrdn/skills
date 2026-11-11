@@ -26,15 +26,19 @@ def main():
     except ValueError:
         return
     path = (data.get("tool_input") or {}).get("file_path") or ""
-    if os.path.basename(path) != "bank.json" or not os.path.isfile(path):
+    name = os.path.basename(path)
+    if not (name.startswith("bank") and name.endswith(".json")) or not os.path.isfile(path):
         return
 
     try:
         with open(path, encoding="utf-8") as f:
-            json.load(f)
+            bank = json.load(f)
     except ValueError as e:
-        emit(["bank.json не разбирается как JSON: %s. Исправь файл, прежде чем собирать банк." % e])
+        emit(["%s не разбирается как JSON: %s. Исправь файл, прежде чем собирать банк." % (name, e)])
         return
+
+    if not (isinstance(bank, dict) and "lecture" in bank and isinstance(bank.get("questions"), list)):
+        return  # some other project's bank*.json, not a question bank
 
     root = os.environ.get("CLAUDE_PLUGIN_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     script = os.path.join(root, "skills", "moodle-question-bank", "scripts", "check_bank.py")
@@ -43,14 +47,14 @@ def main():
     except (OSError, subprocess.TimeoutExpired):
         return
     if res.returncode not in (0, 1):
-        emit(["check_bank.py не смог проверить bank.json:", (res.stderr or res.stdout).strip()[-800:]])
+        emit(["check_bank.py не смог проверить %s:" % name, (res.stderr or res.stdout).strip()[-800:]])
         return
 
     errors = [l[len("ОШИБКА "):] for l in res.stdout.splitlines() if l.startswith("ОШИБКА ")]
     n_warn = sum(1 for l in res.stdout.splitlines() if l.startswith("ПРЕДУПРЕЖДЕНИЕ "))
     if not errors:
         return
-    lines = ["check_bank.py: ошибки в bank.json (%d), номер вопроса слева:" % len(errors)]
+    lines = ["check_bank.py: ошибки в %s (%d), номер вопроса слева:" % (name, len(errors))]
     lines += errors[:MAX_SHOWN]
     if len(errors) > MAX_SHOWN:
         lines.append("...и ещё %d." % (len(errors) - MAX_SHOWN))
