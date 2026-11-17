@@ -1,0 +1,119 @@
+<div class="viewport"><div class="scene" id="stage">
+<!-- Образец: по одному слайду каждого вида. Для новой темы замените содержание, разметку берите отсюда.
+     data-sec - номер раздела (0 - вступление), data-only="pair|student" - только в одной версии.
+     Шаги: data-in="k" появляется на шаге k, data-out="k" исчезает на шаге k, data-on="k" получает класс on, data-cur="k" - класс cur только на шаге k. -->
+
+<!-- ================= Вступление ================= -->
+<section class="slide s-title" data-sec="0">
+  <div class="tpill">Cloud Computing</div>
+  <h1>Балансировка нагрузки и автоматическое масштабирование</h1>
+  <div class="tbar"></div>
+  <div class="tauthor">Nartea N.</div>
+  <div class="tmeta">Лекция 8 · Информатика и прикладная информатика</div>
+</section>
+
+<section class="slide s-q" data-sec="0" data-q="warm1" data-t="зона доступности" data-kick="Повторение · глава 7"></section>
+
+<section class="slide" data-sec="0">
+  <h2>План лекции</h2>
+  <div class="grow"><ol class="plan">
+    <li>Балансировщик нагрузки</li><li>Группа Auto Scaling</li>
+  </ol></div>
+</section>
+
+<section class="slide" data-sec="0" data-only="student">
+  <h2>Как читать схемы</h2>
+  <div class="grow"><div class="cards c3">
+    <div class="card"><div class="lb">Передача</div><div style="height:40px;display:flex;align-items:center"><div class="link flow on" style="max-width:none;width:100%;margin:0 12px 0 0"><i></i></div></div><p>Точка бежит по стрелке: передаётся запрос, образ или журнал.</p></div>
+    <div class="card"><div class="lb">Работает</div><div style="height:40px;display:flex;align-items:center"><span class="node sm on" style="min-width:0;padding:4px 14px;flex-direction:row">{{icon:ec2}}<b>сервер</b></span></div><p>Зелёная рамка: компонент работает.</p></div>
+    <div class="card"><div class="lb">Сбой</div><div style="height:40px;display:flex;align-items:center"><span class="node sm down on" style="min-width:0;padding:4px 14px;flex-direction:row">{{icon:ec2}}<b>сервер</b></span></div><p>Бледный узел: сервер вышел из строя.</p></div>
+  </div><p class="after">Схема собирается по шагам: нажимайте → и читайте подпись под схемой.</p></div>
+</section>
+
+<!-- ================= 1. Балансировщик ================= -->
+<section class="slide s-div" data-sec="1" data-name="Балансировщик нагрузки"><div class="big">01</div><h2>Балансировщик нагрузки</h2><p class="q">Как распределить запросы между несколькими серверами, если один из них откажет?</p></section>
+
+<section class="slide" data-sec="1">
+  <h2>Балансировщик и целевая группа</h2>
+  <div class="grow"><div class="cards c2">
+    <div class="card def"><div class="lb">Определение</div><p><b>Балансировщик нагрузки</b> (load balancer) - сервис, который принимает запросы клиентов и распределяет их между несколькими серверами.</p></div>
+    <div class="card def"><div class="lb">Определение</div><p><b>Целевая группа</b> (target group) - набор серверов, между которыми балансировщик распределяет запросы.</p></div>
+  </div></div>
+</section>
+
+<!-- Живая схема по рисунку главы: точки только на стрелках, по которым идут запросы (класс flow). -->
+<section class="slide" data-sec="1">
+  <h2>Проверка состояния</h2>
+  <p class="figby" data-only="pair">По рисунку 8.2</p>
+  <p class="figby" data-only="student">По рисунку 8.2. Слева пользователи, в центре балансировщик, справа два сервера целевой группы.</p>
+  <div class="dg">
+    <div class="area"><div class="dx">
+      <div class="node">{{icon:users}}<b>Пользователи</b></div>
+      <div class="link flow on"><span>HTTPS</span><i></i></div>
+      <div class="node hot">{{icon:alb}}<b>Балансировщик</b></div>
+      <div class="fan">
+        <div class="fr"><div class="link flow r" data-on="1"><i></i></div><div class="node sm">{{icon:ec2}}<small>сервер A</small></div></div>
+        <div class="fr"><div class="link flow r" data-on="1 2"><i></i></div><div class="node sm down" data-on="2">{{icon:ec2}}<small>сервер B</small></div></div>
+      </div>
+    </div></div>
+    <div class="caps">
+      <div data-out="1"><span class="n">0</span><span>Балансировщик принимает запросы пользователей.</span></div>
+      <div data-in="1" data-out="2"><span class="n">1</span><span>Запросы делятся между двумя серверами целевой группы.</span></div>
+      <div data-in="2"><span class="n">2</span><span>Сервер B не прошёл <b>проверку состояния</b>: запросы идут только на сервер A.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-q" data-sec="1" data-q="hc" data-t="проверка состояния"></section>
+
+<!-- ================= 2. Auto Scaling ================= -->
+<section class="slide s-div" data-sec="2" data-name="Группа Auto Scaling"><div class="big">02</div><h2>Группа Auto Scaling</h2><p class="q">Как держать нужное число серверов без ручного запуска?</p></section>
+
+<!-- Длинный список: один пункт на шаг, слева оглавление. -->
+<section class="slide" data-sec="2">
+  <h2>Параметры группы</h2>
+  <div class="series">
+    <div class="list"></div>
+    <div class="stack" data-gen="series" data-key="asg"></div>
+  </div>
+</section>
+
+<section class="slide" data-sec="2">
+  <h2>Шаблон запуска</h2>
+  <div data-stand="code" data-id="lt"></div>
+</section>
+
+<!-- Стенд: заголовок и инструкция одной строкой. Калькуляторы и упражнения - только для студентов. -->
+<section class="slide" data-sec="2" data-only="student">
+  <h2>Что настраивается где</h2>
+  <div class="stand z0"><div class="stand-head"><b>Упражнение</b> · отнесите параметр к сервису</div><div class="stand-body" data-stand="classify" data-id="where"></div></div>
+</section>
+
+<!-- ================= Итоги ================= -->
+<section class="slide" data-sec="2">
+  <h2>Резюме</h2>
+  <div class="grow"><div class="cards c2">
+    <div class="card b"><div class="lb">Балансировщик</div><p>Распределяет запросы и не отправляет их на сервер, который не прошёл проверку.</p></div>
+    <div class="card r"><div class="lb">Auto Scaling</div><p>Держит желаемое число серверов и заменяет вышедшие из строя.</p></div>
+  </div></div>
+</section>
+
+<div data-gen="mistakes" data-sec="3" data-only="student"></div>
+<div data-gen="final" data-sec="3" data-only="student"></div>
+<section class="slide result" data-sec="3" data-only="student">
+  <h2>Результат</h2>
+  <div class="grow">
+    <div class="big" id="resBig">0 из 0</div>
+    <p class="intro" id="resText">Ответьте на вопросы, и здесь появится результат.</p>
+    <div class="row"><button class="btn" type="button" id="resReset">Пройти контрольную заново</button></div>
+  </div>
+</section>
+
+</div></div>
+<nav class="navbar" aria-label="Навигация по слайдам">
+  <div class="nb-side"><button type="button" id="bOv" class="nb-btn">Все слайды</button></div>
+  <div class="nb-main"><button type="button" id="bPrev" class="nb-btn nb-arrow">← Назад</button><span class="nb-num"><b id="navNum">1</b> из <span id="navAll">1</span></span><button type="button" id="bNext" class="nb-btn nb-arrow nb-next">Далее →</button></div>
+  <div class="nb-side nb-right"><button type="button" id="bTheme" class="nb-btn">Тема</button><button type="button" id="bFs" class="nb-btn">Во весь экран</button></div>
+</nav>
+<div class="rotate" id="rotateHint"><span>Поверните телефон горизонтально, так слайды будут крупнее.</span><button type="button" id="rotateClose" class="nb-btn">Понятно</button></div>
+<div class="overview" id="overview" hidden><h3>Все слайды</h3><p class="help">→ или пробел: следующий шаг или слайд. ←: назад. O: этот список. F: полный экран. L: лёгкий режим для слабого компьютера. Home и End: начало и конец. На слайде с вопросом нажмите на вариант, чтобы увидеть ответ.</p><div class="ov-grid" id="ovGrid"></div></div>

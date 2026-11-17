@@ -14,6 +14,11 @@
       "name": "moodle-question-bank",
       "source": "./plugins/moodle-question-bank",
       "description": "Составляет и правит банки вопросов Moodle по материалу темы курса: XML для импорта, ключ в Markdown, открытые вопросы с рубрикой."
+    },
+    {
+      "name": "lecture-deck-builder",
+      "source": "./plugins/lecture-deck-builder",
+      "description": "Собирает презентации к лекциям по главе курса: PPTX и PDF в фирменном стиле или интерактивную HTML-презентацию с живыми схемами и пакетом SCORM для Moodle."
     }
   ]
 }

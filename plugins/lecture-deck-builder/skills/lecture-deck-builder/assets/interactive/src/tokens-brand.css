@@ -1,0 +1,18 @@
+/* Фирменный стиль курса (lecture-deck-builder): Manrope, индиго и голубой, белые слайды,
+   градиент только на титуле, разделителях, тезисах и hands-on. Одна светлая тема: так задумано для проектора. */
+:root{
+  --bg:#ffffff; --surface:#F4F5F8; --surface-2:#F7F8FA; --ink:#0B0B12; --body:#3A3F4A; --muted:#6A707C; --faint:#9AA0AA;
+  --rule:#E4E6EC; --rule-2:#CDD1DA;
+  --build:#4F46E5; --build-fill:#4F46E5; --build-soft:#EEF0FF;
+  --run:#0369A1; --run-fill:#0EA5E9; --run-soft:#EEF8FD;
+  --good:#15803D; --bad:#DC2626; --good-bg:#EAF7EE; --bad-bg:#FDECEC; --warn:#B45309; --warn-bg:#FFF6EC;
+  --plate:#ffffff;
+  --build-line:rgba(79,70,229,.55); --run-line:rgba(14,165,233,.55); --bad-line:rgba(220,38,38,.55); --good-line:rgba(21,128,61,.55); --build-halo:rgba(79,70,229,.22); --run-halo:rgba(14,165,233,.22);
+  --code-bg:#0F1626; --code-ink:#E4E9F2; --code-k:#C79BF0; --code-s:#9DD69B; --code-c:#6E7C9E; --code-sel:rgba(127,176,255,.18); --code-hover:rgba(255,255,255,.06);
+  --font-display:"Manrope","Segoe UI",system-ui,sans-serif;
+  --font-body:"Manrope","Segoe UI",system-ui,sans-serif;
+  --font-mono:"Geist Mono",ui-monospace,Menlo,Consolas,monospace;
+  --t-title:42px; --t-intro:23px; --t-card:20px; --t-card-title:24px;
+  --radius:8px;
+  color-scheme:light;
+}

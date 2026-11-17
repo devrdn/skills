@@ -1,0 +1,40 @@
+/* Вариант «журнал сборки»: холодная серая бумага и чернила как в рисунках главы.
+   Оранжевый = сборка и образы, бирюзовый = то, что работает. Моноширинный шрифт только в коде. */
+:root{
+  --bg:#eceff2; --surface:#ffffff; --surface-2:#f4f6f8; --ink:#16202c; --body:#2b3542; --muted:#556170; --faint:#8a95a3;
+  --rule:#d3d9e0; --rule-2:#b9c2cc;
+  --build:#b05600; --build-fill:#ed7100; --build-soft:#fdeedf;
+  --run:#00797b; --run-fill:#00a4a6; --run-soft:#ddf3f3;
+  --good:#2a7a1e; --bad:#c22d16; --good-bg:#e4f3df; --bad-bg:#fbe5e0; --warn:#8a6400; --warn-bg:#fbf1d6;
+  --plate:#ffffff;
+  --build-line:rgba(237,113,0,.55); --run-line:rgba(0,164,166,.55); --bad-line:rgba(194,45,22,.55); --good-line:rgba(42,122,30,.55); --build-halo:rgba(237,113,0,.22); --run-halo:rgba(0,164,166,.22);
+  --code-bg:#f4f6f8; --code-ink:#16202c; --code-k:#b05600; --code-s:#00797b; --code-c:#556170; --code-sel:rgba(237,113,0,.16); --code-hover:rgba(0,164,166,.08);
+  --font-display:"Geologica","Segoe UI",system-ui,sans-serif;
+  --font-body:"Golos Text","Segoe UI",system-ui,sans-serif;
+  --font-mono:"Geist Mono",ui-monospace,Menlo,Consolas,monospace;
+  --t-title:40px; --t-intro:22px; --t-card:19px; --t-card-title:24px;
+  --radius:6px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f141b; --surface:#161d26; --surface-2:#1c2530; --ink:#e4e9ef; --body:#c9d1db; --muted:#97a3b2; --faint:#6d7886; --rule:#2a3441; --rule-2:#3a4655;
+    --build:#ff9b45; --build-fill:#ed7100; --build-soft:#33220f;
+    --run:#3fd0cf; --run-fill:#00a4a6; --run-soft:#0c2b2d;
+    --good:#72cc5f; --bad:#ff7b63; --good-bg:#16301a; --bad-bg:#3a1c17; --warn:#e8bf55; --warn-bg:#342a10;
+    --plate:#f3f5f7;
+    --build-line:rgba(237,113,0,.6); --run-line:rgba(0,164,166,.6); --bad-line:rgba(255,123,99,.6); --good-line:rgba(114,204,95,.6); --build-halo:rgba(237,113,0,.28); --run-halo:rgba(0,164,166,.28);
+    --code-bg:#1c2530; --code-ink:#e4e9ef; --code-k:#ff9b45; --code-s:#3fd0cf; --code-c:#97a3b2; --code-sel:rgba(237,113,0,.22); --code-hover:rgba(63,208,207,.08);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f141b; --surface:#161d26; --surface-2:#1c2530; --ink:#e4e9ef; --body:#c9d1db; --muted:#97a3b2; --faint:#6d7886; --rule:#2a3441; --rule-2:#3a4655;
+  --build:#ff9b45; --build-fill:#ed7100; --build-soft:#33220f;
+  --run:#3fd0cf; --run-fill:#00a4a6; --run-soft:#0c2b2d;
+  --good:#72cc5f; --bad:#ff7b63; --good-bg:#16301a; --bad-bg:#3a1c17; --warn:#e8bf55; --warn-bg:#342a10;
+  --plate:#f3f5f7;
+    --build-line:rgba(237,113,0,.6); --run-line:rgba(0,164,166,.6); --bad-line:rgba(255,123,99,.6); --good-line:rgba(114,204,95,.6); --build-halo:rgba(237,113,0,.28); --run-halo:rgba(0,164,166,.28);
+  --code-bg:#1c2530; --code-ink:#e4e9ef; --code-k:#ff9b45; --code-s:#3fd0cf; --code-c:#97a3b2; --code-sel:rgba(237,113,0,.22); --code-hover:rgba(63,208,207,.08);
+  color-scheme:dark;
+}

@@ -1,0 +1,2 @@
+{ "name": "lecture-deck-engine", "version": "1.0.0", "private": true,
+  "dependencies": { "pptxgenjs": "^4.0.1", "image-size": "~1.2.1" } }
