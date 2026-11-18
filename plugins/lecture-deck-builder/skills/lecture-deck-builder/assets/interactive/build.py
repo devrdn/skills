@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Собирает интерактивные презентации темы из src/.
 
-Один источник src/slides.html, два режима:
-  пара      - преподаватель показывает на лекции;
-  студенты  - самостоятельное изучение, понятно без лектора.
+Один источник src/slides.html, три версии:
+  пара       - преподаватель показывает на лекции;
+  пара_квиз  - то же и командный квиз в конце (только HTML; собирается, если в слайдах есть data-gen="quiz");
+  студенты   - самостоятельное изучение, понятно без лектора.
 
-python3 build.py              HTML для пары и студентов + два SCORM-пакета для Moodle
+python3 build.py              HTML трёх версий + два SCORM-пакета для Moodle (пара и студенты)
 python3 build.py --variant    ещё и второй дизайн (tokens-mine.css, шрифты из Google Fonts)
 python3 build.py --artifact   ещё и фрагменты без <html>/<head> для публикации артефактом
 
 Все файлы работают без интернета: шрифты, иконки и фоны встроены в HTML.
 """
 import base64, pathlib, re, sys, urllib.parse, zipfile
+import html as html_mod
 
 ROOT = pathlib.Path(__file__).resolve().parent
 SRC = ROOT / "src"
@@ -27,7 +29,7 @@ CONFIG = {
     "moodle_title": "Лекция 8. Балансировка нагрузки и автоматическое масштабирование",
     "figures": ROOT.parent.parent / "_images" / "08",  # рисунки главы для {{fig:...}}, если нужны
     "mastery": 60,                                   # проходной балл итогового теста в SCORM
-    "line_icons": {"git", "gear", "users", "user", "code", "doc", "server", "laptop"},  # контурные: инвертируются в тёмной теме
+    "line_icons": {"git", "gear", "users", "user", "code", "doc", "server", "laptop", "browser", "buffer", "folder", "package", "layout", "terminal"},  # контурные: инвертируются в тёмной теме
 }
 # ----------------------------------------------------------------------
 
@@ -65,7 +67,10 @@ def figures(html):
 def icons(html):
     """{{icon:имя}} -> <i class="ic ic-имя">. Сама картинка встраивается один раз в CSS,
     а не копией в каждый узел: файл меньше, браузер декодирует каждую иконку один раз."""
-    used = sorted(set(re.findall(r"\{\{icon:([a-z0-9]+)\}\}", html)))
+    used = set(re.findall(r"\{\{icon:([a-z0-9]+)\}\}", html))
+    # иконки, вставленные в разметку классом напрямую: <i class="ic ic-имя">
+    used |= {n for n in re.findall(r'class="ic ic-([a-z0-9]+)', html) if (SRC / "icons" / (n + ".svg")).exists()}
+    used = sorted(used)
     line = CONFIG["line_icons"]
     html = re.sub(r"\{\{icon:([a-z0-9]+)\}\}",
                   lambda m: f'<i class="ic ic-{m.group(1)}{" ic-line" if m.group(1) in line else ""}" aria-hidden="true"></i>', html)
@@ -74,12 +79,88 @@ def icons(html):
 
 
 def only(html, mode):
-    """Убирает слайды и блоки, помеченные data-only для другого режима."""
-    other = "student" if mode == "pair" else "pair"
-    html = re.sub(r'<section[^>]*data-only="%s"[^>]*>.*?</section>\s*' % other, "", html, flags=re.S)
-    html = re.sub(r'<div[^>]*data-only="%s"[^>]*></div>\s*' % other, "", html)
-    html = re.sub(r'<p[^>]*data-only="%s"[^>]*>.*?</p>\s*' % other, "", html, flags=re.S)
+    """Убирает слайды и блоки, помеченные data-only для другого режима.
+    data-only="pair quiz" - в нескольких режимах. Режим quiz = версия для пары + командный квиз."""
+    keep = {"pair": {"pair"}, "quiz": {"pair", "quiz"}, "student": {"student"}}[mode]
+    def drop(m):
+        return "" if not (set(m.group(1).split()) & keep) else m.group(0)
+    for pat in (r'<section[^>]*data-only="([^"]*)"[^>]*>.*?</section>\s*', r'<div[^>]*data-only="([^"]*)"[^>]*></div>\s*',
+                r'<p[^>]*data-only="([^"]*)"[^>]*>.*?</p>\s*', r'<li[^>]*data-only="([^"]*)"[^>]*>.*?</li>\s*'):
+        html = re.sub(pat, drop, html, flags=re.S)
     return html
+
+
+# ---------- блоки кода: <xcode lang="php|tpl|text|bash" cur="1:2-4;2:6" on="..." in="..." bad="3">сырой код</xcode> ----------
+KW_PHP = r"\b(?:function|return|require|require_once|echo|if|else|elseif|endif|foreach|endforeach|as|new|use|declare|exit|array|string|int|bool|void|true|false|null)\b"
+KW_SH = r"\b(?:aws|docker|git|npm|node|php|python3|composer|kubectl|terraform|require|install|start|run|build|push|pull)\b"
+KW_C = r"\b(?:function|return|const|let|var|if|else|for|while|do|switch|case|break|continue|new|class|struct|public|private|protected|static|void|int|double|float|char|bool|auto|true|false|null|nullptr|this|import|export|from|async|await|include|using|namespace|std)\b"
+TOK_PHP = re.compile(r"(?P<c>//.*$|#.*$)|(?P<s>'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\")|(?P<t><\?php|<\?=|\?>)|(?P<v>\$\w+)|(?P<k>" + KW_PHP + ")")
+TOK_TPL = re.compile(r"(?P<c><!--.*?-->|\{#.*?#\})|(?P<t><\?(?:php|=).*?\?>|\{%.*?%\}|\{\{.*?\}\}|\{[/$a-z][^{}]*\})")
+TOK_C = re.compile(r"(?P<c>//.*$)|(?P<s>'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"|`[^`]*`)|(?P<t>#\w+)|(?P<k>" + KW_C + ")")
+TOK_SH = re.compile(r"(?P<s>'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\")|(?P<k>" + KW_SH + ")")
+
+
+def esc(t):
+    return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def hl_seg(seg, lang):
+    rx = {"php": TOK_PHP, "tpl": TOK_TPL, "bash": TOK_SH, "js": TOK_C, "cpp": TOK_C}.get(lang)
+    if not rx:
+        return esc(seg)
+    out, pos = [], 0
+    for m in rx.finditer(seg):
+        out.append(esc(seg[pos:m.start()]))
+        out.append(f'<span class="{m.lastgroup}">{esc(m.group(0))}</span>')
+        pos = m.end()
+    out.append(esc(seg[pos:]))
+    return "".join(out)
+
+
+def hl_line(line, lang):
+    """Помеченные куски строки: ⟪текст⟫ - выделение всегда, ⟪k|текст⟫ - выделение с шага k."""
+    out, pos = [], 0
+    for m in re.finditer(r"⟪(?:(\d+)\|)?(.*?)⟫", line):
+        out.append(hl_seg(line[pos:m.start()], lang))
+        attr = f' data-on="{m.group(1)}"' if m.group(1) else ' class="on"'
+        out.append(f"<mark{attr}>{hl_seg(m.group(2), lang)}</mark>")
+        pos = m.end()
+    out.append(hl_seg(line[pos:], lang))
+    return "".join(out) or " "
+
+
+def line_steps(spec):
+    """"1:2-4;2:6" -> {2: '1', 3: '1', 4: '1', 6: '2'}"""
+    res = {}
+    for part in filter(None, (spec or "").split(";")):
+        k, rng = part.split(":")
+        for r in rng.split(","):
+            a, _, b = r.partition("-")
+            for n in range(int(a), int(b or a) + 1):
+                res[n] = k
+    return res
+
+
+def codeblocks(html):
+    def blk(m):
+        if m.group(0).startswith("<!--"):
+            return m.group(0)  # комментарий с примером разметки не трогаем
+        attrs = dict(re.findall(r'(\w+)="([^"]*)"', m.group(1)))
+        lang = attrs.get("lang", "php")
+        lines = html_mod.unescape(m.group(2)).strip("\n").split("\n")
+        cur, on, inn = line_steps(attrs.get("cur")), line_steps(attrs.get("on")), line_steps(attrs.get("in"))
+        bad = {int(x) for x in attrs.get("bad", "").split(",") if x}
+        cls = "code" + (" plain" if lang == "text" else "") + (" " + attrs["class"] if "class" in attrs else "")
+        style = f' style="{attrs["style"]}"' if "style" in attrs else ""
+        rows = []
+        for i, ln in enumerate(lines, 1):
+            a = ""
+            if i in cur: a += f' data-cur="{cur[i]}"'
+            if i in on: a += f' data-on="{on[i]}"'
+            if i in inn: a += f' data-in="{inn[i]}"'
+            rows.append(f'<span class="ln{" bad" if i in bad else ""}"{a}>{hl_line(ln, lang)}</span>')
+        return f'<pre class="{cls}"{style}>' + "".join(rows) + "</pre>"
+    return re.sub(r"<!--.*?-->|<xcode([^>]*)>(.*?)</xcode>", blk, html, flags=re.S)
 
 
 def embedded_fonts():
@@ -98,25 +179,31 @@ def embedded_fonts():
         for (fam, f), g in groups.items())
 
 
+def quiz_data(mode):
+    """data.js; вопросы командного квиза попадают только в версию quiz, чтобы студенты не видели их в коде страницы."""
+    d = read("data.js")
+    return d if mode == "quiz" else re.sub(r"\nquiz: \[.*?\n\],\n", "\n", d, count=1, flags=re.S)
+
+
 def build(mode, design):
-    body, icon_css = icons(figures(only(read("slides.html"), mode)))
+    body, icon_css = icons(figures(codeblocks(only(read("slides.html"), mode))))
     css = read(f"tokens-{design}.css")
     if design == "brand":
         css = embedded_fonts() + "\n" + css
         css += (":root{--grad-full:url(%s);--grad-soft:url(%s)}\n"
                 % (b64(SRC / "grad_full.jpg", "image/jpeg"), b64(SRC / "grad_soft.jpg", "image/jpeg")))
-    css += read("components.css") + read("deck.css") + icon_css
+    css += read("components.css") + read("deck.css") + read("mechanics.css") + read("topic.css") + icon_css
     body = f'<div class="app">\n{body}\n</div>'
     js = (f'window.DECK={{mode:"{mode}",design:"{design}",id:"{CONFIG["id"]}"}};\n'
-          + read("data.js") + "\n" + read("stands.js") + "\n" + read("deck.js"))
-    title = CONFIG["title_pair" if mode == "pair" else "title_student"] + ("" if design == "brand" else ", вариант")
+          + quiz_data(mode) + "\n" + read("stands.js") + "\n" + read("deck.js")).replace("</script", "<\\/script")
+    title = CONFIG["title_student" if mode == "student" else "title_pair"] + (", квиз" if mode == "quiz" else "") + ("" if design == "brand" else ", вариант")
     fonts = "" if design == "brand" else f'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?{GOOGLE_MINE}&display=swap">\n'
     head = f"<title>{title}</title>\n{fonts}<style>\n{css}\n</style>\n"
     tail = f"\n<script>\n{js}\n</script>\n"
     full = ('<!DOCTYPE html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n'
             '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
             + head + "</head>\n<body>\n" + body + tail + "</body>\n</html>\n")
-    name = f'{CONFIG["files"]}_{"пара" if mode == "pair" else "студенты"}{"" if design == "brand" else "_вариант"}'
+    name = f'{CONFIG["files"]}_{ {"pair": "пара", "quiz": "пара_квиз", "student": "студенты"}[mode] }{"" if design == "brand" else "_вариант"}'
     (DIST / f"{name}.html").write_text(full, encoding="utf-8")
     if "--artifact" in sys.argv:
         (DIST / "artifact").mkdir(exist_ok=True)
@@ -170,6 +257,8 @@ def main():
         scorm(mode, build(mode, "brand"))
         if "--variant" in sys.argv:
             build(mode, "mine")
+    if 'data-gen="quiz"' in read("slides.html"):
+        build("quiz", "brand")  # версия для пары с командным квизом, только HTML
 
 
 if __name__ == "__main__":

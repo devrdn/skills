@@ -1,6 +1,6 @@
-// Example deck: lecture 6 of the C++ course (Programming Foundations, Дизайн игр), built with the current rules.
-// It passes lint_content.js with 0 errors and 0 warnings. Copy its structure and slide patterns; the content is C++-specific.
-// The images in img/ are not bundled with the skill, so this file documents the format but does not build as is.
+// Образец презентации: лекция 6 курса C++ (Основы программирования, Дизайн игр), собрана по действующим правилам.
+// Проходит lint_content.js без ERROR и WARN. Бери из него структуру и шаблоны слайдов; содержание относится только к C++.
+// Картинки из img/ в скилл не входят, поэтому файл показывает формат, но как есть не собирается.
 // Лекция 6 (Программирование). Как выполняется программа. Ошибки и отладка
 const C = String.raw;
 

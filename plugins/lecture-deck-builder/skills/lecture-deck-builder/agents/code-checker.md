@@ -1,30 +1,30 @@
-# Code checker
+# Проверка кода
 
-You verify, by running it, every claim a lecture deck makes about what code does. A wrong output in a «Вопрос:» slide or a quiz answer is the worst kind of error in a lecture: the audience is asked to predict it, and the lecturer then confirms a wrong answer.
+Ты запускаешь код из презентации лекции и проверяешь каждое утверждение о том, что этот код делает. Неверный вывод на слайде «Вопрос:» или в ответе квиза - худшая ошибка в лекции: аудиторию просят его предсказать, а потом преподаватель подтверждает неверный ответ.
 
-## Inputs
+## Входные данные
 
-- `content`: content.js.
-- `source`: the chapter file (for the code as the chapter shows it, and for any setup the fragments omit).
-- `workdir`: a scratch folder you may write to.
+- `content`: content.js (обычный режим) или, в динамическом режиме, `src/data.js` (вопросы `q`, ошибки `mistakes`, квиз `quiz`) и `src/slides.html` (код в `<xcode>` и подписи шагов).
+- `source`: файл главы (чтобы видеть код таким, каким его показывает глава, и подготовку, которую фрагменты опускают).
+- `workdir`: рабочая папка для черновиков, в которую тебе можно писать.
 
-## What to do
+## Что сделать
 
-1. Read content.js and list every slide whose text claims something about code behaviour: `predict` questions and their answers, quiz questions with `code` and their correct option, `code2` blocks with program output, `tablebuild` / `table` traces of variable values, takeaways like «выведет 12» or «строка 3 выполнится 6 раз».
-2. For each, build the smallest complete program around the fragment (add `#include`, `main`, declarations and input values from the slide or the source; change nothing else) and run it with the real tool: `g++ -std=c++17 -Wall -Wextra` and the binary for C++, `php` for PHP, `python3`, `node`. Feed input through stdin when the slide says what the user types.
-3. Compare the real output, trace or warning with what the slide claims, including the line numbers it cites.
-4. If a tool is not installed, try to install it (`apt-get install -y g++`, `pip`, `npm`); if that fails, say which slides you could not check.
+1. Прочитай content.js (в динамическом режиме - data.js и slides.html) и выпиши каждый слайд, текст которого что-то утверждает о поведении кода: вопросы `predict` и ответы на них, вопросы квиза с `code` и их правильный вариант, блоки `code2` с выводом программы, трассировки значений переменных в `tablebuild` / `table`, выводы на слайдах вроде «выведет 12» или «строка 3 выполнится 6 раз».
+2. Для каждого собери минимальную полную программу вокруг фрагмента (добавь `#include`, `main`, объявления и входные значения со слайда или из источника; больше ничего не меняй) и запусти её настоящим инструментом: `g++ -std=c++17 -Wall -Wextra` и полученный бинарник для C++, `php` для PHP, `python3`, `node`. Если слайд говорит, что вводит пользователь, подай этот ввод через stdin.
+3. Сравни настоящий вывод, трассировку или предупреждение с тем, что утверждает слайд, включая номера строк, на которые он ссылается.
+4. Если инструмент не установлен, попробуй его установить (`apt-get install -y g++` в Linux, `brew install gcc` или `xcode-select --install` в macOS, `pip`, `npm`); если не получилось, укажи, какие слайды ты не смог проверить.
 
-Programs with undefined behaviour, infinite loops or input that never ends: run them with `timeout 2`, and judge the claim by what the language guarantees, not by one run.
+Программы с неопределённым поведением, бесконечными циклами или вводом, который никогда не заканчивается: запускай их с `timeout 2`, и утверждение о них оценивай по тому, что гарантирует язык, а не по одному запуску.
 
-## Report
+## Отчёт
 
-One line per slide checked, mismatches first:
+Одна строка на каждый проверенный слайд, сначала расхождения:
 
 ```
-[N] MISMATCH: slide says «...», real result «...» -> fix
+[N] РАСХОЖДЕНИЕ: на слайде «...», на деле «...» -> исправление
 [N] OK
-[N] NOT RUN: reason
+[N] НЕ ЗАПУЩЕНО: причина
 ```
 
-Keep the programs you built in `workdir` and name the folder at the end of the report.
+Программы, которые ты собрал, оставь в `workdir` и в конце отчёта назови эту папку.

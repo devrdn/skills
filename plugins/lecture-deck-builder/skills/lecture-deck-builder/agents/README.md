@@ -1,62 +1,62 @@
-# Review agents
+# Агенты-рецензенты
 
-The main session is the **author**: it reads the source, plans, writes the whole content.js, applies findings and builds. Agents only **review**: each has one job, gets only the input that job needs, reports findings and changes nothing.
+Основная сессия - **автор**: она читает источник, составляет план, пишет каждый слайд (content.js или slides.html), вносит замечания и собирает презентацию. Агенты только **рецензируют**: у каждого одна задача, на вход он получает только то, что для неё нужно, возвращает замечания и ничего не меняет.
 
-Why the author writes everything himself: connections and consistent terms come from one hand. Splitting the writing across agents by section produces exactly the disconnected slides the review exists to catch.
+Почему основная сессия пишет всё сама: связи между слайдами и единые термины получаются, только когда всё пишет один автор. Если раздать написание разделов разным агентам, получатся ровно те несвязанные слайды, которые и должна ловить проверка.
 
-Why separate reviewers instead of one: the author knows the chapter, so he silently fills the gaps between slides, and after hours of work his own sentences read as fine. The course author kept finding five kinds of defect that slipped through one reviewer: facts that drift from the source, wrong outputs in code questions, slides out of order or not connected, clumsy Russian, and layout. Each needs a different reader.
+Почему рецензентов несколько, а не один: основная сессия знает главу, поэтому молча заполняет пробелы между слайдами, а после нескольких часов работы её собственные фразы кажутся ей нормальными. Автор курса раз за разом находил пять видов дефектов, которые проходили мимо одного рецензента: факты, которые расходятся с источником; неверный вывод в вопросах по коду; слайды не по порядку или не связанные между собой; неуклюжий русский язык; дефекты вёрстки. Для каждого вида нужен свой читатель.
 
-## Roles
+## Роли
 
-| Agent file | Model | Stage | Reads | Finds |
+| Файл агента | Модель | Этап | Читает | Находит |
 |---|---|---|---|---|
-| `plan-reviewer.md` | sonnet | A: after the plan, before content.js | `plan.md` only | order, prerequisites, threads, budget |
-| `fidelity-reviewer.md` | sonnet | B: after content.js passes lint | source, previous chapter, content.js, story.md | facts, completeness, titles, quiz |
-| `code-checker.md` | sonnet | B | content.js, source | code outputs and answers that a real compiler or interpreter disagrees with |
-| `student-reader.md` | sonnet | B | `story.md` **only** | where a first-year student loses the thread |
-| `language-editor.md` | opus | B | story.md | clumsy Russian, linking words, paragraphs |
-| `visual-checker.md` | haiku | C: after the build | page images | layout defects |
-| `animation-checker.md` | opus | interactive mode, after the build | slides.html, chapter, built HTML | live diagrams without enough motion, missing dots, step order, slides worth animating (Russian file) |
+| `plan-reviewer.md` | sonnet | A: после плана по слайдам, до того как написан хоть один слайд; оба режима | только `plan.md`; в динамическом режиме ещё `references/dynamic/animation.md` и `references/dynamic/content.md` | порядок, предпосылки, нити изложения, заголовки, бюджет; в динамическом режиме ещё карточки функций и места, где нужно движение |
+| `fidelity-reviewer.md` | sonnet | B: после того как content.js прошёл lint | источник, прошлая глава, content.js, story.md; в динамическом режиме slides.html, data.js и story.md из `story_html.py` | факты, полнота, заголовки, квиз |
+| `code-checker.md` | sonnet | B | content.js, источник; в динамическом режиме data.js и slides.html | вывод кода и ответы, которые расходятся с настоящим компилятором или интерпретатором |
+| `student-reader.md` | sonnet | B; в динамическом режиме после первой сборки | **только** `story.md` (в динамическом режиме из `story_html.py`) | где студент первого курса теряет нить |
+| `language-editor.md` | opus | B и D; в динамическом режиме после первой сборки | story.md (в динамическом режиме из `story_html.py`), deck_text.md для версии для пары | неуклюжий русский язык, слова-связки, абзацы |
+| `visual-checker.md` | haiku | C: после сборки | изображения страниц | дефекты вёрстки |
+| `animation-checker.md` | opus | динамический режим, после сборки | slides.html, глава, собранный HTML | процессы без движения, новые механики, которые стоит добавить, движение без смысла, функции без карточки, точки, порядок шагов, геометрия стрелок |
 
-The student reader and the plan reviewer must not see the source: a reader who knows the chapter fills every jump the way the author does, and the student PDF is read later without the narration.
+Студент-читатель и рецензент плана не должны видеть источник: читатель, который знает главу, мысленно восполняет каждый пропуск так же, как автор, а студенческий PDF потом читают без рассказа преподавателя.
 
-## How to launch
+## Как запускать
 
-Use the Agent tool with `subagent_type: "general-purpose"` and the model from the table. The agent reads its own instructions, so the prompt is short and the main context stays small:
+Используй инструмент Agent с `subagent_type: "general-purpose"` и моделью из таблицы. Агент сам читает свою инструкцию, поэтому запрос короткий, а основной контекст остаётся небольшим:
 
 ```
-You are the <role> for a university lecture deck. Read <skill>/agents/<file>.md and follow it exactly.
-Inputs:
-- <name>: <absolute path>
+Ты - <роль> для презентации университетской лекции. Прочитай <skill>/agents/<file>.md и строго следуй ему.
+Входные данные:
+- <имя>: <абсолютный путь>
 ...
-Return only the report in the format the file asks for.
+Верни только отчёт в том формате, который требует файл.
 ```
 
-Fill the inputs each file lists under «Inputs». Use absolute paths. Agents of one stage go **in one message**, so they run in parallel:
+Перечисли входные данные, которые указаны в разделе «Входные данные» файла агента. Пути указывай абсолютные. Агентов одного этапа запускай **в одном сообщении**, чтобы они работали параллельно:
 
-- **Stage A:** plan reviewer alone. Fix the plan, then write content.js.
-- **Stage B:** fidelity reviewer, code checker, student reader and language editor together.
-- **Stage C:** one visual checker per batch of about 40 pages, all batches in one message.
-- **Interactive mode:** the animation checker after the first build, together with the language editor; run it again after adding the animations it proposed.
+- **Этап A:** только рецензент плана, с заданным `mode`. Исправь plan.md, затем пиши слайды.
+- **Этап B:** рецензент по фактам, проверка кода, студент-читатель и языковой редактор вместе.
+- **Этап C:** одна проверка вёрстки на каждую пачку примерно из 40 страниц, все пачки в одном сообщении.
+- **Динамический режим:** после первой сборки рецензент по фактам, проверка кода (если в лекции есть код), студент-читатель, языковой редактор и проверка анимаций в одном сообщении; после того как внесёшь замечания проверки анимаций, запусти её ещё раз. Вместо `story.js` текст для рецензентов даёт `scripts/story_html.py` из собранной студенческой версии (`references/dynamic/workflow.md`, порядок работы, шаг 6).
 
-## Rounds
+## Круги проверки
 
-- Stage A: one round. Run it again only if the plan changed a lot.
-- Stage B: after applying round 1, run the **student reader and the language editor** again on the new story.md if either returned more than ~5 substantive findings. Stop after a round with no substantive findings or after round 2. On lecture 6, round 1 found 38 broken links and 72 wording problems; round 2 still found real ones, including a contradiction introduced by a round-1 fix. A third round rarely pays off: read the changed slides yourself.
-- Fidelity reviewer and code checker: one round; after fixing, re-run the code checker only on the slides you changed.
-- Stage C: after fixing, re-render only the changed pages and look at them yourself.
+- Этап A: один круг. Повтори его, только если план сильно изменился.
+- Этап B: после того как внесёшь замечания первого круга, запусти **студента-читателя и языкового редактора** ещё раз на новом story.md, если хотя бы один из них вернул больше ~5 существенных замечаний. Остановись после круга без существенных замечаний или после второго круга. На лекции 6 первый круг нашёл 38 разорванных связей и 72 проблемы с формулировками; второй круг всё равно нашёл настоящие ошибки, в том числе противоречие, которое появилось из-за исправления первого круга. Третий круг редко окупается: изменённые слайды перечитай сам.
+- Рецензент по фактам и проверка кода: один круг; после исправлений запусти проверку кода ещё раз только на изменённых слайдах.
+- Этап C: после исправлений перерисуй только изменённые страницы и посмотри их сам.
 
-## Applying findings
+## Как вносить замечания
 
-- **Fidelity:** apply, unless the finding asks for something outside the source (source-only rule, content-rules.md section 1).
-- **Code checker:** a mismatch is a fact; fix the slide's answer or code. If the source itself is wrong, use the correct output and list the error in the report.
-- **Plan reviewer and student reader:** retitle, reorder, cut, or give the slide its own lead. Reject any proposed lead that starts with a linking word or narration, or points back with «это», «тот же»: rewrite it as a statement of this slide's point (content-rules.md, «Connections between slides»).
-- **Language editor:** apply the rewrite when it is more fluent and keeps the meaning and the term. Keep the source's terms even if the editor suggests a synonym.
-- **Animation checker:** apply. The author wants more motion, not less: add the steps, dots and movements it proposes unless they contradict the chapter. Never drop an animation because a reviewer called it excessive.
-- **Visual:** confirm doubtful findings at a larger size before acting (`pdftoppm -f N -l N -r 80 -png deck.pdf out`).
-- Every change must still pass `lint_content.js`: a lead added to a slide may push it over the text limit, so shorten the other text.
-- Conflicts: fidelity and the code checker win on facts, the plan reviewer and student reader on order and links, the language editor on wording.
+- **Рецензент по фактам:** принимай замечание, если оно не требует того, чего нет в источнике (правило «только из источника», `references/common/content-rules.md`, §1).
+- **Проверка кода:** расхождение - это факт; исправь ответ или код на слайде. Если ошибся сам источник, используй правильный вывод и укажи ошибку в отчёте.
+- **Рецензент плана и студент-читатель:** переименуй слайд, переставь, убери или дай ему собственную вводную строку. Отклоняй любую предложенную вводную строку, которая начинается со слова-связки или с рассказа преподавателя либо ссылается назад через «это», «тот же»: перепиши её как утверждение о главной мысли этого слайда (`references/common/content-rules.md`, §5, подраздел о связях между слайдами).
+- **Языковой редактор:** принимай предложенный вариант, если он складнее и сохраняет смысл и термин. Термины источника оставляй, даже если редактор предлагает синоним.
+- **Проверка анимаций:** принимай замечание, если оно не противоречит главе или `references/dynamic/animation.md`. Добавь движение и новые механики, которые она предлагает; сделай статичным то, что она отметила как движение без процесса; исправь точки, шаги и геометрию. Анимацию не ограничивают, поэтому никогда не убирай анимацию процесса только потому, что анимации кажется много.
+- **Проверка вёрстки:** сомнительные замечания перед исправлением подтверди на изображении крупнее (`pdftoppm -f N -l N -r 80 -png deck.pdf out`).
+- Каждое изменение по-прежнему должно проходить `lint_content.js`: вводная строка, добавленная на слайд, может превысить на нём лимит текста; тогда сократи остальной текст.
+- Конфликты: в фактах побеждают рецензент по фактам и проверка кода, в порядке и связях - рецензент плана и студент-читатель, в формулировках - языковой редактор.
 
-## Without the Agent tool
+## Без инструмента Agent
 
-If subagents are unavailable (for example when this skill itself runs inside a subagent), do each review yourself, one at a time, by reading its agent file and following it. Re-read story.md from the start for each pass. For the student-reader pass, do not open the source: ask that file's questions literally for every slide. Say in the report that the review was done without separate agents.
+Если субагенты недоступны (например, когда сам этот скилл работает внутри субагента), проведи каждую проверку сам, по очереди: прочитай файл агента и следуй ему. Для каждого прохода перечитывай story.md с начала. При проходе студента-читателя не открывай источник: для каждого слайда задавай себе вопросы из его файла дословно. Укажи в отчёте, что проверка выполнена без отдельных агентов.

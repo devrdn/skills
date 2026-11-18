@@ -41,6 +41,29 @@ $$('[data-gen="final"]').forEach((m) => {
   m.replaceWith(...Array.from({ length: n }, (_, i) => qSlide("f" + (i + 1), "", m.dataset.sec || "0", `Проверьте себя · вопрос ${i + 1} из ${n}`)));
 });
 
+/* ---------- командный квиз: вопросы без ответов, «Время вышло», затем ответы ---------- */
+$$('[data-gen="quiz"]').forEach((m) => {
+  const sec = m.dataset.sec || "0", n = DATA.quiz.length, out = [];
+  const opts = (d, ans) => h("div", { class: "qopts" }, ...d.opts.map((o, k) => h("div", { class: "qopt" + (ans && k === d.a ? " ok" : ans ? " no-pick" : "") }, h("span", { class: "lt" }, L[k]), h("span", { html: md(o) }))));
+  const body = (d, i, ans) => {
+    const s = h("section", { class: "slide qz" + (ans ? " qs done" : ""), "data-sec": sec });
+    s.append(h("div", { class: "qkick" }, `${ans ? "Ответ" : "Командный квиз · вопрос"} ${i + 1} из ${n}${d.pts > 1 ? ` · ${d.pts} балла` : ""}`), h("h2", null, d.t));
+    const g = h("div", { class: "grow", style: "justify-content:flex-start;gap:14px" });
+    g.append(h("p", { class: "qtext", html: md(d.q) }));
+    if (d.code) g.append(h("pre", { class: "code" }, ...d.code.split("\n").map((l) => h("span", { class: "ln" }, l))));
+    g.append(opts(d, ans));
+    if (ans) g.append(h("p", { class: "qexp", html: md(d.exp) }));
+    s.append(g);
+    return s;
+  };
+  DATA.quiz.forEach((d, i) => out.push(body(d, i, false)));
+  const up = h("section", { class: "slide s-key", "data-sec": sec });
+  up.append(h("div", { class: "klabel" }, "Командный квиз"), h("blockquote", null, "Время вышло. Сдайте ответы."));
+  out.push(up);
+  DATA.quiz.forEach((d, i) => out.push(body(d, i, true)));
+  m.replaceWith(...out);
+});
+
 /* ---------- вопросы: клик по варианту показывает ответ ---------- */
 const buildQ = (s) => {
   const id = s.dataset.q, d = DATA.q[id];
@@ -88,7 +111,7 @@ function applyStep(s) {
     if (e.dataset.in != null || e.dataset.out != null) e.classList.toggle("hid", !vis);
     /* data-on="1" - включён с шага 1; data-on="1 3" - включён на шагах 1 и 2, с шага 3 снова выключен */
     if (e.dataset.on != null) { const [a, b] = nums(e, "data-on"); e.classList.toggle("on", k >= a && (b == null || k < b)); }
-    if (e.dataset.cur != null) e.classList.toggle("cur", k === +e.dataset.cur);
+    if (e.dataset.cur != null) e.classList.toggle("cur", nums(e, "data-cur").includes(k));
   });
   if (s.classList.contains("s-q") && k >= 1 && !s.classList.contains("done")) s.reveal(null);
   const st = s.querySelector(".stepper");
@@ -98,9 +121,9 @@ function applyStep(s) {
 /* ---------- нижняя строка ---------- */
 let secName = "", secNo = 0;
 const SECS = $$(".slide.s-div").length;
+const SECNAME = {}; $$(".slide.s-div").forEach((d) => (SECNAME[d.dataset.sec] = d.dataset.name || ""));
 slides.forEach((s, i) => {
-  if (s.classList.contains("s-div")) { secNo = +s.dataset.sec; secName = s.dataset.name || ""; }
-  if (+s.dataset.sec === 0) { secName = ""; secNo = 0; }
+  secNo = +s.dataset.sec || 0; secName = SECNAME[s.dataset.sec] || "";
   const f = h("div", { class: "foot" });
   if (s.matches(".s-div,.s-key,.s-hands")) f.classList.add("on-dark");
   f.append(h("span", { class: "sec" }, secName && !s.classList.contains("s-div") ? `${String(secNo).padStart(2, "0")}. ${secName}` : ""));

@@ -1,14 +1,18 @@
-// Print content.js as a readable story: the deck as the audience meets it, slide by slide.
-// Reviewers read story.md instead of JavaScript; the author reads it to check the order of the slides.
-// Usage: node story.js content.js > story.md
+// Выводит content.js как читаемый сюжет: презентация слайд за слайдом, в том порядке, в каком её видит аудитория.
+// Рецензенты читают story.md вместо JavaScript; автор читает его, чтобы проверить порядок слайдов.
+// Запуск: node story.js content.js > story.md
 //
-// Marks (each one is a question to look at, not an automatic error):
-//   «⚠ впервые: `x`»  - a name in the slide's text that no earlier slide showed and the slide's own code does not
-//                       contain: the slide may use something before it is introduced (content-rules.md, «Slide order»).
-//   «⚠ термин «X» встречался раньше, на [N]» - a definition card comes after slides that already use the term.
-//   «⚠ раздел начинается без постановки проблемы» - a section opens with a bare image, table or code.
+// Пометки (каждая - повод присмотреться, а не автоматическая ошибка):
+//   «⚠ впервые: `x`»  - имя в тексте слайда, которого не показал ни один предыдущий слайд и нет в коде самого
+//                       слайда: возможно, слайд использует понятие до того, как его ввели (references/common/content-rules.md, §5, «Порядок слайдов»).
+//   «⚠ термин «X» встречался раньше, на [N]» - карточка определения стоит после слайдов, которые уже используют термин.
+//   «⚠ раздел начинается без постановки проблемы» - раздел открывается голым рисунком, таблицей или кодом.
 const path = require("path");
 delete process.env.STUDENT;
+if (!process.argv[2]) {
+  console.error("Запуск: node story.js content.js > story.md");
+  process.exit(1);
+}
 const deck = require(path.resolve(process.argv[2]));
 const slides = deck.slides;
 const FRAME = /^(План лекции|Вопросы для самопроверки|Результаты обучения|Ретроспектива|Резюме|Правила квиза)/;
@@ -17,7 +21,7 @@ const strip = (t) => (t || "").replace(/\s+/g, " ").trim();
 const itemText = (it) => (typeof it === "string" ? it : `**${it.lead || ""}** ${it.text || ""}`);
 const ind = (txt, pre = "      ") => txt.split("\n").map((l) => pre + l).join("\n");
 
-// ---- what each slide shows (code and text) and what its text refers to by name
+// ---- что показывает каждый слайд (код и текст) и на какие имена ссылается его текст
 const IDENT = /[A-Za-z_][A-Za-z0-9_]*/g;
 const codeOf = (s) => [s.code, s.code2, s.left && s.left.code, s.right && s.right.code].filter(Boolean).join("\n");
 const textOf = (s) => [s.intro, s.ask, s.question, s.text, s.after, s.answer, s.term, s.definition, s.term2, s.definition2,
@@ -25,14 +29,14 @@ const textOf = (s) => [s.intro, s.ask, s.question, s.text, s.after, s.answer, s.
   ...[s.left, s.right].filter(Boolean).flatMap((c) => [c.label, c.text, ...(c.items || []).map(itemText)]),
   ...(s.header || []), ...(s.rows || []).flat(), s.caption].filter(Boolean).map(String).join("\n");
 const spans = (t) => (t.match(/`[^`]+`/g) || []).map((x) => x.slice(1, -1));
-// names worth tracking: identifiers in inline code (`score`, `enemy <= 2` -> score, enemy); short or numeric ones are noise
+// имена, за которыми стоит следить: идентификаторы во встроенном коде (`score`, `enemy <= 2` -> score, enemy); короткие и числовые - шум
 const namesIn = (t) => spans(t).flatMap((x) => x.match(IDENT) || []).filter((w) => w.length > 2);
 const known = new Set();
 const learn = (s) => {
   for (const w of codeOf(s).match(IDENT) || []) known.add(w);
   for (const w of namesIn(textOf(s))) known.add(w);
 };
-// a term «Неопределённое поведение (undefined behavior, UB)» -> a loose regex for its Russian words
+// термин «Неопределённое поведение (undefined behavior, UB)» -> нестрогое регулярное выражение по его русским словам
 const termRe = (term) => {
   const words = term.replace(/\(.*?\)/g, "").trim().split(/\s+/).filter(Boolean);
   if (!words.some((w) => /[а-яё]/i.test(w))) return null;

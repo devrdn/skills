@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Finds dark text that dropped into the footer zone (below 5.12 in).
-check_all.py misses muted text, so this check complements it.
-Grey source lines and the page number are ignored."""
+"""Находит тёмный текст, который попал в зону нижнего колонтитула (ниже 5,12 дюйма).
+check_all.py не замечает приглушённый текст, поэтому эта проверка его дополняет.
+Серые строки источника и номер страницы не учитываются."""
 import sys
 import pdfplumber
 
-IGNORE = {(0.6, 0.63, 0.67), (0.31, 0.27, 0.9)}   # muted grey and the indigo page number
+IGNORE = {(0.6, 0.63, 0.67), (0.31, 0.27, 0.9)}   # приглушённый серый и индиговый номер страницы
 LIMIT = 5.12
+if len(sys.argv) < 2:
+    sys.exit("Запуск: python3 footer_scan.py <Name>.pdf")
 pdf = sys.argv[1]
 bad = {}
 with pdfplumber.open(pdf) as d:
@@ -18,5 +20,5 @@ with pdfplumber.open(pdf) as d:
             if ch["bottom"] / 72 > LIMIT:
                 bad.setdefault(i + 1, []).append(ch["text"])
 for n, t in bad.items():
-    print(f"footer overlap, page {n}: {''.join(t)[:60]}")
-print("footer overlaps:", len(bad))
+    print(f"наложение на колонтитул, стр {n}: {''.join(t)[:60]}")
+print("наложений на колонтитул:", len(bad))

@@ -1,7 +1,9 @@
 <div class="viewport"><div class="scene" id="stage">
 <!-- Образец: по одному слайду каждого вида. Для новой темы замените содержание, разметку берите отсюда.
-     data-sec - номер раздела (0 - вступление), data-only="pair|student" - только в одной версии.
-     Шаги: data-in="k" появляется на шаге k, data-out="k" исчезает на шаге k, data-on="k" получает класс on, data-cur="k" - класс cur только на шаге k. -->
+     data-sec - номер раздела (0 - вступление), data-only="pair|student|quiz" - только в этих версиях (несколько через пробел).
+     Шаги: data-in="k" появляется на шаге k, data-out="k" исчезает на шаге k, data-on="k" получает класс on,
+     data-cur="k" или "k m" - класс cur только на этих шагах. Точка на стрелке flow бежит только на шагах data-cur.
+     Код: <xcode lang="php|tpl|bash|js|cpp|text" cur="шаг:строки">сырой код</xcode>, правила в references/dynamic/markup.md. -->
 
 <!-- ================= Вступление ================= -->
 <section class="slide s-title" data-sec="0">
@@ -17,7 +19,7 @@
 <section class="slide" data-sec="0">
   <h2>План лекции</h2>
   <div class="grow"><ol class="plan">
-    <li>Балансировщик нагрузки</li><li>Группа Auto Scaling</li>
+    <li>Балансировщик нагрузки</li><li>Группа Auto Scaling</li><li data-only="quiz">Командный квиз</li>
   </ol></div>
 </section>
 
@@ -38,10 +40,12 @@
   <div class="grow"><div class="cards c2">
     <div class="card def"><div class="lb">Определение</div><p><b>Балансировщик нагрузки</b> (load balancer) - сервис, который принимает запросы клиентов и распределяет их между несколькими серверами.</p></div>
     <div class="card def"><div class="lb">Определение</div><p><b>Целевая группа</b> (target group) - набор серверов, между которыми балансировщик распределяет запросы.</p></div>
-  </div></div>
+  </div>
+  <!-- Выноска из главы ([!TIP], [!NOTE], [!IMPORTANT], [!WARNING], [!CAUTION]): свой цвет, не цвет определения. -->
+  <div class="callout tip"><span class="lb">Совет</span><p>Серверы целевой группы лучше размещать в разных зонах доступности: отказ одной зоны не остановит сервис.</p></div></div>
 </section>
 
-<!-- Живая схема по рисунку главы: точки только на стрелках, по которым идут запросы (класс flow). -->
+<!-- Живая схема по рисунку главы: точка бежит по стрелке flow только на тех шагах (data-cur), когда по ней идут запросы. -->
 <section class="slide" data-sec="1">
   <h2>Проверка состояния</h2>
   <p class="figby" data-only="pair">По рисунку 8.2</p>
@@ -49,11 +53,11 @@
   <div class="dg">
     <div class="area"><div class="dx">
       <div class="node">{{icon:users}}<b>Пользователи</b></div>
-      <div class="link flow on"><span>HTTPS</span><i></i></div>
+      <div class="link flow on" data-cur="0 1 2"><span>HTTPS</span><i></i></div>
       <div class="node hot">{{icon:alb}}<b>Балансировщик</b></div>
       <div class="fan">
-        <div class="fr"><div class="link flow r" data-on="1"><i></i></div><div class="node sm">{{icon:ec2}}<small>сервер A</small></div></div>
-        <div class="fr"><div class="link flow r" data-on="1 2"><i></i></div><div class="node sm down" data-on="2">{{icon:ec2}}<small>сервер B</small></div></div>
+        <div class="fr"><div class="link flow r" data-on="1" data-cur="1 2"><i></i></div><div class="node sm">{{icon:ec2}}<small>сервер A</small></div></div>
+        <div class="fr"><div class="link flow r" data-on="1 2" data-cur="1"><i></i></div><div class="node sm down" data-on="2">{{icon:ec2}}<small>сервер B</small></div></div>
       </div>
     </div></div>
     <div class="caps">
@@ -78,6 +82,17 @@
   </div>
 </section>
 
+<!-- Карточка функции или команды стоит до кода и схемы, которые её используют. -->
+<section class="slide" data-sec="2">
+  <h2>Изменение желаемого числа серверов</h2>
+  <div class="fn"><div class="lb">Команда</div><div class="sig">aws autoscaling set-desired-capacity</div><p>Задаёт группе новое желаемое число серверов.</p><p class="ret">Результат: группа запускает или останавливает серверы, пока их число не станет желаемым.</p></div>
+  <div class="grow">
+<xcode lang="bash" cur="1:1-2;2:3">aws autoscaling set-desired-capacity \
+  --auto-scaling-group-name web \
+  --desired-capacity ⟪4⟫</xcode>
+  </div>
+</section>
+
 <section class="slide" data-sec="2">
   <h2>Шаблон запуска</h2>
   <div data-stand="code" data-id="lt"></div>
@@ -89,6 +104,10 @@
   <div class="stand z0"><div class="stand-head"><b>Упражнение</b> · отнесите параметр к сервису</div><div class="stand-body" data-stand="classify" data-id="where"></div></div>
 </section>
 
+<!-- ================= Командный квиз: только в версии «пара_квиз» ================= -->
+<section class="slide s-div" data-sec="3" data-name="Командный квиз" data-only="quiz"><div class="big">03</div><h2>Командный квиз</h2><p class="q">Ответы команды записывают на листок, последний вопрос стоит 2 балла.</p></section>
+<div data-gen="quiz" data-sec="3" data-only="quiz"></div>
+
 <!-- ================= Итоги ================= -->
 <section class="slide" data-sec="2">
   <h2>Резюме</h2>
@@ -98,9 +117,9 @@
   </div></div>
 </section>
 
-<div data-gen="mistakes" data-sec="3" data-only="student"></div>
-<div data-gen="final" data-sec="3" data-only="student"></div>
-<section class="slide result" data-sec="3" data-only="student">
+<div data-gen="mistakes" data-sec="4" data-only="student"></div>
+<div data-gen="final" data-sec="4" data-only="student"></div>
+<section class="slide result" data-sec="4" data-only="student">
   <h2>Результат</h2>
   <div class="grow">
     <div class="big" id="resBig">0 из 0</div>
